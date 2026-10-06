@@ -173,7 +173,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       {/* Edit Profile */}
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-lg md:text-xl font-semibold">Edit Profile</h2>
           <p className="text-sm text-muted-foreground">Update your business name and email address.</p>
@@ -233,7 +233,7 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {/* Change Password */}
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-5">
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-lg md:text-xl font-semibold">Change Password</h2>
           <p className="text-sm text-muted-foreground">Update your account password. Must be at least 6 characters.</p>
@@ -279,7 +279,7 @@ export const SettingsPage: React.FC = () => {
         </form>
       </section>
 
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-sm space-y-6">
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h2 className="text-lg md:text-xl font-semibold">Staff Accounts</h2>
@@ -500,7 +500,7 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
-      <section className="rounded-2xl md:rounded-3xl border border-rose-200 bg-rose-50 p-4 md:p-6 shadow-sm space-y-4">
+      <section className="rounded-2xl md:rounded-3xl border border-rose-200 bg-rose-50 p-4 md:p-6 shadow-xs space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg md:text-xl font-semibold text-rose-900">Danger Zone</h2>
           <p className="text-sm text-rose-800/90">

@@ -429,7 +429,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
             <QrCode size={16} /> Scan QR
           </Button>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-            <Button onClick={openIssueWizard} className="w-full gap-2 rounded-full px-6 shadow-sm sm:w-auto" disabled={!canIssue}>
+            <Button onClick={openIssueWizard} className="w-full gap-2 rounded-full px-6 shadow-xs sm:w-auto" disabled={!canIssue}>
               <Plus size={16} /> Issue New Card
             </Button>
             {!canIssue && (
@@ -447,17 +447,17 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         </div>
       )}
 
-      <div className="flex w-full items-center space-x-2 rounded-lg border bg-white px-3 py-2 shadow-sm focus-within:ring-2 focus-within:ring-ring sm:max-w-sm">
+      <div className="flex w-full items-center space-x-2 rounded-lg border bg-white px-3 py-2 shadow-xs focus-within:ring-2 focus-within:ring-ring sm:max-w-sm">
         <Search className="text-gray-400" size={20} />
         <input
-          className="flex-1 outline-none text-sm bg-transparent placeholder:text-muted-foreground"
+          className="flex-1 outline-hidden text-sm bg-transparent placeholder:text-muted-foreground"
           placeholder="Find a card..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      <div className="rounded-xl border bg-white shadow-sm">
+      <div className="rounded-xl border bg-white shadow-xs">
         {cardRows.length === 0 ? (
           <div className="flex h-32 items-center justify-center px-4 text-center text-sm text-muted-foreground">
             No cards found. Issue one to get started.
@@ -469,7 +469,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
                 <div
                   key={card.id}
                   className={cn(
-                    "rounded-2xl border p-4 shadow-sm",
+                    "rounded-2xl border p-4 shadow-xs",
                     isRedeemed ? "border-gray-200 bg-gray-50/70" : "border-border bg-white"
                   )}
                 >

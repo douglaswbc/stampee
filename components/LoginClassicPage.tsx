@@ -132,7 +132,7 @@ export const LoginClassicPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
+          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-xs hover:bg-black/80"
         >
           {isSubmitting ? "Signing in..." : <>Continue <ArrowRight className="ml-2 h-4 w-4" /></>}
         </Button>

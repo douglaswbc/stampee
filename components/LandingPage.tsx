@@ -91,7 +91,7 @@ const PhoneMockup: React.FC = () => (
             </div>
           </div>
         </div>
-        <div className="mx-3 mt-2 flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-sm">
+        <div className="mx-3 mt-2 flex items-center justify-between rounded-xl bg-white px-4 py-3 shadow-xs">
           <div>
             <p className="text-[10px] font-semibold text-[#1d1d1f]">Scan to stamp</p>
             <p className="text-[8px] text-[#6e6e73]">Show this to staff</p>
@@ -145,13 +145,13 @@ const AnalyticsMockup: React.FC = () => (
         <p className="text-[9px] text-[#6e6e73]">Feb 12 – Feb 25 · 14 days</p>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {[{ l: "Customers", v: "142" }, { l: "Active Cards", v: "89" }, { l: "Redemption", v: "68%" }].map(s => (
-            <div key={s.l} className="rounded-xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-sm">
+            <div key={s.l} className="rounded-xl border border-black/[0.06] bg-white px-3 py-2.5 shadow-xs">
               <p className="text-[8px] text-[#6e6e73]">{s.l}</p>
               <p className="mt-0.5 text-base font-semibold text-[#1d1d1f]">{s.v}</p>
             </div>
           ))}
         </div>
-        <div className="mt-3 overflow-hidden rounded-xl border border-black/[0.06] bg-white p-3 shadow-sm">
+        <div className="mt-3 overflow-hidden rounded-xl border border-black/[0.06] bg-white p-3 shadow-xs">
           <p className="text-[9px] font-semibold text-[#1d1d1f]">Activity Over Time</p>
           <div className="mt-2 flex h-20 items-end gap-[3px]">
             {[28,45,22,60,38,75,52,65,42,80,58,90,70,85].map((h, i) => (
@@ -162,7 +162,7 @@ const AnalyticsMockup: React.FC = () => (
             <span>Feb 12</span><span>Feb 25</span>
           </div>
         </div>
-        <div className="mt-2 overflow-hidden rounded-xl border border-black/[0.06] bg-white p-3 shadow-sm">
+        <div className="mt-2 overflow-hidden rounded-xl border border-black/[0.06] bg-white p-3 shadow-xs">
           <p className="text-[9px] font-semibold text-[#1d1d1f]">Campaign Performance</p>
           <div className="mt-2 space-y-2.5">
             {[{ n: "Summer Treats", p: 68 }, { n: "Morning Rush", p: 42 }].map(c => (
@@ -218,11 +218,11 @@ const CustomersMockup: React.FC = () => {
               <p className="text-[9px] font-semibold text-white">+ Add</p>
             </div>
           </div>
-          <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-black/[0.06] bg-white px-2.5 py-2 shadow-sm">
+          <div className="mt-2.5 flex items-center gap-2 rounded-lg border border-black/[0.06] bg-white px-2.5 py-2 shadow-xs">
             <div className="h-3 w-3 rounded-full border-[1.5px] border-[#6e6e73]/40" />
             <p className="text-[9px] text-[#6e6e73]/60">Search customers...</p>
           </div>
-          <div className="mt-2.5 overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-sm">
+          <div className="mt-2.5 overflow-hidden rounded-xl border border-black/[0.06] bg-white shadow-xs">
             <div className="grid grid-cols-[1fr_1.8fr_0.4fr] border-b border-black/[0.05] bg-[#f5f5f7] px-3 py-2 text-[8px] font-semibold uppercase tracking-widest text-[#6e6e73]">
               <span>Name</span><span>Contact</span><span className="text-right">Cards</span>
             </div>

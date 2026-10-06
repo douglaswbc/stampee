@@ -165,7 +165,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border shadow-sm">
+        <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border shadow-xs">
             <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg border w-full max-w-md focus-within:ring-2 focus-within:ring-ring focus-within:bg-white transition-colors">
                 <Search className="text-gray-400" size={20} />
                 <Input 
@@ -180,7 +180,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                 <Calendar className="text-gray-400" size={20} />
                 <input 
                     type="date"
-                    className="bg-transparent text-sm outline-none text-gray-600"
+                    className="bg-transparent text-sm outline-hidden text-gray-600"
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
                 />
@@ -210,7 +210,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-sm">
+        <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-xs">
             <Table>
                 <TableHeader>
                     <TableRow className="bg-muted/30">

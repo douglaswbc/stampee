@@ -844,7 +844,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                                 key={palette.id}
                                                 onSelect={() => applyPalette(palette)}
                                                 className={
-                                                    `mb-1 flex items-center justify-between rounded-md px-2 py-2 text-sm outline-none transition-colors ` +
+                                                    `mb-1 flex items-center justify-between rounded-md px-2 py-2 text-sm outline-hidden transition-colors ` +
                                                     (selected
                                                       ? 'bg-[#1298d2] text-white focus:bg-[#1298d2] focus:text-white'
                                                       : 'text-[#434b67] hover:bg-[#b9c0cf] focus:bg-[#b9c0cf] focus:text-[#2f3650]')
@@ -872,7 +872,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                         <div className="space-y-3">
                             <Label className="text-xs uppercase tracking-wider text-muted-foreground">Background</Label>
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full overflow-hidden border shadow-sm shrink-0 relative">
+                                <div className="h-10 w-10 rounded-full overflow-hidden border shadow-xs shrink-0 relative">
                                     <input 
                                         type="color" 
                                         value={bgHex}
@@ -974,7 +974,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-muted-foreground">Background</p>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-sm shrink-0 relative">
+                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-xs shrink-0 relative">
                                             <input 
                                                 type="color" 
                                                 value={stampInactiveBgHex}
@@ -989,7 +989,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-muted-foreground">Icon Color</p>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-sm shrink-0 relative">
+                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-xs shrink-0 relative">
                                             <input 
                                                 type="color" 
                                                 value={stampInactiveIconHex}
@@ -1008,7 +1008,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-muted-foreground">Background</p>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-sm shrink-0 relative">
+                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-xs shrink-0 relative">
                                             <input 
                                                 type="color" 
                                                 value={stampActiveBgHex}
@@ -1023,7 +1023,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 <div className="space-y-1">
                                     <p className="text-[10px] text-muted-foreground">Icon Color</p>
                                     <div className="flex items-center gap-2">
-                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-sm shrink-0 relative">
+                                        <div className="h-8 w-8 rounded-md overflow-hidden border shadow-xs shrink-0 relative">
                                             <input 
                                                 type="color" 
                                                 value={stampActiveIconHex}
@@ -1040,7 +1040,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                         <div className="space-y-2 pt-2 border-t">
                             <Label className="text-xs uppercase tracking-wider text-muted-foreground">Main Text Color</Label>
                             <div className="flex items-center gap-2">
-                                <div className="h-10 w-10 rounded-md overflow-hidden border shadow-sm shrink-0 relative">
+                                <div className="h-10 w-10 rounded-md overflow-hidden border shadow-xs shrink-0 relative">
                                     <input 
                                         type="color" 
                                         value={textHex}

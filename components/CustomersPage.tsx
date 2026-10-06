@@ -300,7 +300,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
             <h1 className="text-3xl font-bold tracking-tight">Issued Cards</h1>
             <p className="text-muted-foreground">Manage active cards across all campaigns.</p>
         </div>
-        <Button onClick={openIssueWizard} className="gap-2 shadow-sm">
+        <Button onClick={openIssueWizard} className="gap-2 shadow-xs">
             <Plus size={16} /> Issue New Card
         </Button>
       </div>
@@ -313,17 +313,17 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
           onIssue={handleIssueCard}
       />
 
-      <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-md border w-full max-w-sm shadow-sm focus-within:ring-2 focus-within:ring-ring">
+      <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-md border w-full max-w-sm shadow-xs focus-within:ring-2 focus-within:ring-ring">
         <Search className="text-gray-400" size={20} />
         <input 
-            className="flex-1 outline-none text-sm bg-transparent placeholder:text-muted-foreground" 
+            className="flex-1 outline-hidden text-sm bg-transparent placeholder:text-muted-foreground"
             placeholder="Search by name, email, or campaign..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      <div className="rounded-lg border bg-white flex-1 overflow-auto shadow-sm">
+      <div className="rounded-lg border bg-white flex-1 overflow-auto shadow-xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -493,7 +493,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
                      <div className="w-24 h-24 rounded-full bg-primary/5 flex items-center justify-center text-primary border-4 border-primary/10 shadow-inner animate-pulse">
                         <Stamp size={40} />
                      </div>
-                     <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-sm font-bold px-2.5 py-1 rounded-full border-2 border-white shadow-sm">
+                     <div className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-sm font-bold px-2.5 py-1 rounded-full border-2 border-white shadow-xs">
                         +1
                      </div>
                 </div>

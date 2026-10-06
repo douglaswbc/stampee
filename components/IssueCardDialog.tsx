@@ -256,7 +256,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                     {/* STEP 5: SUCCESS (QR CODE) */}
                     {step === 'success' && createdCard && (
                         <div className="flex h-full flex-col items-center justify-center space-y-6 p-4 animate-fade-in sm:p-6">
-                            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                            <div className="bg-white p-4 rounded-xl shadow-xs border border-gray-100">
                                 <QrCodeDisplay value={publicUrl} label="QR code" className="h-56 w-56 sm:h-72 sm:w-72" />
                             </div>
                             <div className="text-center space-y-2 w-full max-w-xs">

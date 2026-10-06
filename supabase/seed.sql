@@ -15,13 +15,45 @@
 do $$
 declare
   v_uid uuid := gen_random_uuid();
+  v_existing_uid uuid;
+  v_column record;
   v_email text := 'admin@stampee.local';
   v_password text := 'Admin1234';
   v_business_name text := 'Demo Business';
   v_slug text := 'demo';
 begin
   -- Skip if the admin account already exists
-  if exists (select 1 from auth.users where email = v_email) then
+  select id into v_existing_uid
+  from auth.users
+  where lower(email) = lower(v_email)
+  limit 1;
+
+  if v_existing_uid is not null then
+    -- GoTrue expects token fields to be empty strings, not NULL. Older versions
+    -- of this seed omitted these fields when inserting directly into auth.users.
+    for v_column in
+      select column_name
+      from information_schema.columns
+      where table_schema = 'auth'
+        and table_name = 'users'
+        and column_name in (
+          'confirmation_token',
+          'recovery_token',
+          'email_change',
+          'email_change_token_new',
+          'email_change_token_current',
+          'phone_change',
+          'phone_change_token',
+          'reauthentication_token'
+        )
+    loop
+      execute format(
+        'update auth.users set %1$I = %2$L where id = $1 and %1$I is null',
+        v_column.column_name,
+        ''
+      ) using v_existing_uid;
+    end loop;
+
     raise notice 'Demo admin already exists. Skipping seed.';
     return;
   end if;
@@ -58,6 +90,30 @@ begin
     now(),
     false
   );
+
+  -- Keep nullable GoTrue token fields compatible with password sign-in.
+  for v_column in
+    select column_name
+    from information_schema.columns
+    where table_schema = 'auth'
+      and table_name = 'users'
+      and column_name in (
+        'confirmation_token',
+        'recovery_token',
+        'email_change',
+        'email_change_token_new',
+        'email_change_token_current',
+        'phone_change',
+        'phone_change_token',
+        'reauthentication_token'
+      )
+  loop
+    execute format(
+      'update auth.users set %1$I = %2$L where id = $1 and %1$I is null',
+      v_column.column_name,
+      ''
+    ) using v_uid;
+  end loop;
 
   -- Create the identity record (required for email/password sign-in)
   insert into auth.identities (

@@ -85,7 +85,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           </Link>
           <Link
             to={t.navLinkTo}
-            className="rounded-full border border-black/[0.1] bg-white px-5 py-2 text-sm font-medium text-[#1d1d1f] shadow-sm transition-colors hover:bg-[#f5f5f7]"
+            className="rounded-full border border-black/[0.1] bg-white px-5 py-2 text-sm font-medium text-[#1d1d1f] shadow-xs transition-colors hover:bg-[#f5f5f7]"
           >
             {t.navLinkLabel}
           </Link>
@@ -110,7 +110,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
             {t.metrics.map((m) => (
               <div
                 key={m.label}
-                className="rounded-2xl border border-black/[0.07] bg-white/80 px-5 py-5 shadow-sm"
+                className="rounded-2xl border border-black/[0.07] bg-white/80 px-5 py-5 shadow-xs"
               >
                 <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6e6e73]">
                   {m.label}
@@ -129,7 +129,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
           {t.features.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {t.features.map((f) => (
-                <div key={f} className="flex items-center gap-1.5 rounded-full border border-black/[0.07] bg-white/80 px-3 py-1.5 shadow-sm">
+                <div key={f} className="flex items-center gap-1.5 rounded-full border border-black/[0.07] bg-white/80 px-3 py-1.5 shadow-xs">
                   <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   <span className="text-[11px] font-medium text-[#6e6e73]">{f}</span>
                 </div>

@@ -210,7 +210,7 @@ export const SignupPage: React.FC = () => {
                 setSlugTouched(true);
                 setSlugInput(e.target.value);
               }}
-              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#171512] outline-none placeholder:text-[#8a8276]"
+              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#171512] outline-hidden placeholder:text-[#8a8276]"
               placeholder="yourbrand"
               required
             />

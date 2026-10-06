@@ -114,7 +114,7 @@ const ResponsiveCardItem: React.FC<ResponsiveCardItemProps> = ({
                 <div className="flex items-center justify-center gap-3">
                     <Button 
                         size="sm" 
-                        className="rounded-full px-6 gap-2 shadow-sm font-semibold" 
+                        className="rounded-full px-6 gap-2 shadow-xs font-semibold"
                         onClick={openActiveView}
                     >
                         <Play size={16} fill="currentColor" /> Open
@@ -236,7 +236,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
             </div>
         </div>
         <div className="flex items-center gap-3">
-            <Button onClick={handleCreateNew} className="gap-2 rounded-full shadow-sm w-full md:w-auto h-11 text-base">
+            <Button onClick={handleCreateNew} className="gap-2 rounded-full shadow-xs w-full md:w-auto h-11 text-base">
                 <PlusCircle size={20} /> Create New
             </Button>
         </div>
@@ -244,7 +244,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
 
       {cards.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-[500px] border-2 border-dashed border-gray-200 rounded-[2rem] bg-white/50">
-          <div className="bg-white p-6 rounded-full shadow-sm mb-6">
+          <div className="bg-white p-6 rounded-full shadow-xs mb-6">
              <PlusCircle size={40} className="text-muted-foreground" />
           </div>
           <h3 className="text-2xl font-bold text-foreground">No campaigns created yet</h3>

@@ -90,13 +90,13 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
           <p className="text-muted-foreground">Manage your customer database.</p>
         </div>
         {!readOnly && (
-          <Button onClick={() => { setFormData({ name: '', email: '', mobile: '' }); setIsAddOpen(true); }} className="gap-2 rounded-full shadow-sm w-full sm:w-auto">
+          <Button onClick={() => { setFormData({ name: '', email: '', mobile: '' }); setIsAddOpen(true); }} className="gap-2 rounded-full shadow-xs w-full sm:w-auto">
             <UserPlus size={16} /> Add Customer
           </Button>
         )}
       </div>
 
-      <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-sm">
+      <div className="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg border w-full max-w-sm shadow-xs">
         <Search className="text-gray-400" size={20} />
         <Input
           className="flex-1 border-none shadow-none focus-visible:ring-0 px-0"
@@ -112,7 +112,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </div>
       )}
 
-      <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-sm">
+      <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-xs">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">

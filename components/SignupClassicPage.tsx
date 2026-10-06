@@ -206,7 +206,7 @@ export const SignupClassicPage: React.FC = () => {
                 setSlugTouched(true);
                 setSlugInput(e.target.value);
               }}
-              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#1d1d1f] outline-none placeholder:text-[#6e6e73]/50"
+              className="min-w-0 flex-1 bg-transparent font-mono text-sm text-[#1d1d1f] outline-hidden placeholder:text-[#6e6e73]/50"
               placeholder="yourbrand"
               required
             />
@@ -236,7 +236,7 @@ export const SignupClassicPage: React.FC = () => {
         <Button
           type="submit"
           disabled={isDisabled}
-          className="h-11 w-full rounded-full bg-[#1d1d1f] text-sm font-medium text-white shadow-sm hover:bg-black/80 disabled:opacity-40"
+          className="h-11 w-full rounded-full bg-[#1d1d1f] text-sm font-medium text-white shadow-xs hover:bg-black/80 disabled:opacity-40"
         >
           {isSubmitting ? "Creating..." : "Create Workspace"}
           {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}

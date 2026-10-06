@@ -58,7 +58,7 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
           <Link
             to="/login"
-            className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
+            className="inline-flex h-12 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-xs hover:bg-black/80"
           >
             Back to Sign In
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -103,7 +103,7 @@ export const ForgotPasswordPage: React.FC = () => {
         <Button
           type="submit"
           disabled={busy}
-          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-sm hover:bg-black/80"
+          className="h-12 w-full rounded-full bg-[#1d1d1f] text-base font-medium text-white shadow-xs hover:bg-black/80"
         >
           {busy ? "Sending..." : "Send Reset Link"}
           {!busy && <ArrowRight className="ml-2 h-4 w-4" />}

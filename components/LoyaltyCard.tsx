@@ -365,7 +365,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                       setCurrentSlide(1);
                     }}
                     className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center border shadow-sm bg-white/20 backdrop-blur-md border-white/20",
+                        "w-10 h-10 rounded-full flex items-center justify-center border shadow-xs bg-white/20 backdrop-blur-md border-white/20",
                         "transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                     )}
                     aria-label="View Card Details"
@@ -416,7 +416,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                 <h1
                   className={cn(
                     template.titleSize || 'text-4xl md:text-5xl',
-                    "font-extrabold tracking-tight uppercase break-words max-w-full drop-shadow-sm",
+                    "font-extrabold tracking-tight uppercase break-words max-w-full drop-shadow-xs",
                     sizeVariant === 'compact' && "text-3xl md:text-4xl",
                     isMobileCompleted && "text-3xl"
                   )}
@@ -427,7 +427,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                 {mode === 'public' ? (
                     <p
                       className={cn(
-                        "font-medium text-sm md:text-base tracking-wide opacity-90 drop-shadow-sm",
+                        "font-medium text-sm md:text-base tracking-wide opacity-90 drop-shadow-xs",
                         sizeVariant === 'compact' && "text-xs md:text-sm",
                         isMobileCompleted && "text-xs"
                       )}
@@ -438,7 +438,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                 ) : (
                     <p
                       className={cn(
-                        "font-medium text-sm md:text-base tracking-wide opacity-90 drop-shadow-sm",
+                        "font-medium text-sm md:text-base tracking-wide opacity-90 drop-shadow-xs",
                         sizeVariant === 'compact' && "text-xs md:text-sm",
                         isMobileCompleted && "text-xs"
                       )}
@@ -501,7 +501,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
               ) : (
                   <div
                     className={cn(
-                      "mt-4 font-semibold text-lg opacity-90 drop-shadow-sm",
+                      "mt-4 font-semibold text-lg opacity-90 drop-shadow-xs",
                       sizeVariant === 'compact' && "text-base"
                     )}
                     style={{ color: textColor.hex }}
@@ -577,7 +577,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                           <>
                             <QrCode size={220} className="text-gray-900" />
                             <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="bg-white p-2 rounded-full shadow-sm border border-gray-100">
+                                <div className="bg-white p-2 rounded-full shadow-xs border border-gray-100">
                                     <Icon size={40} className="text-gray-900" />
                                 </div>
                             </div>
