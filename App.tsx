@@ -16,6 +16,7 @@ import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign, set
 import { fetchCustomersWithCards } from './lib/db/customers';
 import { parseCustomerLoyaltyPoints } from './lib/db/loyaltyPoints';
 import { PublicLoyaltyPoints } from './components/PublicLoyaltyPoints';
+import { PublicLoyaltyRewards } from './components/PublicLoyaltyRewards';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
@@ -88,6 +89,8 @@ const DashboardPage = lazy(() => import('./components/DashboardPage').then((modu
 const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
 const MissionsPage = lazy(() => import('./components/MissionsPage').then((module) => ({ default: module.MissionsPage })));
 const MissionProgressList = lazy(() => import('./components/MissionProgressList').then((module) => ({ default: module.MissionProgressList })));
+const RewardsCatalogPage = lazy(() => import('./components/RewardsCatalogPage').then((module) => ({ default: module.RewardsCatalogPage })));
+const RewardRedemptionsPage = lazy(() => import('./components/RewardRedemptionsPage').then((module) => ({ default: module.RewardRedemptionsPage })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -275,6 +278,19 @@ const PublicCardWrapper: React.FC = () => {
   }
 
   const { card, customer, template, missions, loyaltyPoints } = cardData;
+  const refreshLoyaltyPoints = async () => {
+    try {
+      const { data: refreshedPoints, error: pointsError } = await supabase.rpc('get_public_loyalty_points', {
+        slug_input: slug,
+        card_unique_id: uniqueId,
+      });
+      if (!pointsError) {
+        setCardData(current => current ? { ...current, loyaltyPoints: parseCustomerLoyaltyPoints(refreshedPoints) } : current);
+      }
+    } catch {
+      // Keep the current points display if the refresh request is unavailable.
+    }
+  };
   const isRedeemed = card.status === 'Redeemed';
   const cardBackgroundHex = resolveHexAndOpacity(template.colors.background, '#f5f5f5').hex;
   const isDarkBackground = getHexLuminance(cardBackgroundHex) < 0.38;
@@ -331,6 +347,7 @@ const PublicCardWrapper: React.FC = () => {
         )}
       </div>
       <PublicLoyaltyPoints summary={loyaltyPoints} />
+      <PublicLoyaltyRewards slug={slug ?? ''} cardUniqueId={card.uniqueId} onPointsRefresh={refreshLoyaltyPoints} />
       {withSuspense(<MissionProgressList missions={missions} />)}
     </div>
   );
@@ -693,6 +710,7 @@ const AppRoutes: React.FC = () => {
                 )
               } />
               <Route path="/missions" element={withSuspense(<MissionsPage campaigns={createdCards} />)} />
+              <Route path="/rewards" element={withSuspense(<RewardsCatalogPage campaigns={createdCards} />)} />
               <Route path="/gallery" element={withSuspense(<TemplatesGallery />)} />
               <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />
               <Route path="/transactions" element={withSuspense(<TransactionsPage customers={customers} />)} />
@@ -700,6 +718,7 @@ const AppRoutes: React.FC = () => {
             </Route>
 
             <Route element={<RequireRole allowed={["owner", "staff"]} />}>
+              <Route path="/reward-redemptions" element={withSuspense(<RewardRedemptionsPage />)} />
               <Route path="/issued-cards" element={
                 withSuspense(
                   <IssuedCardsPage

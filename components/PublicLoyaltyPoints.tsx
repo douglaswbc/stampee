@@ -68,7 +68,11 @@ export const PublicLoyaltyPoints: React.FC<{ summary: CustomerLoyaltyPoints | nu
               {summary.history.map((entry, index) => (
                 <li key={`${entry.createdAt}-${index}`} className="flex items-start justify-between gap-3 text-sm">
                   <span className="min-w-0">
-                    <span className="block text-gray-800">{t(entry.description)}</span>
+                    <span className="block text-gray-800">{entry.entryType === 'reward_redemption'
+                      ? `${t('Reward redeemed')}: ${entry.description}`
+                      : entry.entryType === 'reward_refund'
+                        ? `${t('Reward points refunded')}: ${entry.description}`
+                        : t(entry.description)}</span>
                     <span className="block text-xs text-gray-500">{dateFormatter.format(new Date(entry.createdAt))}</span>
                   </span>
                   <span className={`shrink-0 font-semibold tabular-nums ${entry.pointsDelta >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>

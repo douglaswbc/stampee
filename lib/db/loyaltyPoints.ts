@@ -117,6 +117,7 @@ export function parseCustomerLoyaltyPoints(value: unknown): CustomerLoyaltyPoint
       const entry = asRecord(value);
       if (!entry || typeof entry.description !== 'string' || typeof entry.createdAt !== 'string') return [];
       const entryType = entry.entryType === 'visit_reversal' || entry.entryType === 'manual_adjustment'
+        || entry.entryType === 'reward_redemption' || entry.entryType === 'reward_refund'
         ? entry.entryType
         : 'visit';
       return [{ entryType, pointsDelta: Number(entry.pointsDelta) || 0, description: entry.description, createdAt: entry.createdAt }];

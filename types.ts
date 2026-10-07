@@ -130,7 +130,7 @@ export interface LoyaltyPointLevel {
   benefit: string;
 }
 
-export type LoyaltyPointEntryType = 'visit' | 'visit_reversal' | 'manual_adjustment';
+export type LoyaltyPointEntryType = 'visit' | 'visit_reversal' | 'manual_adjustment' | 'reward_redemption' | 'reward_refund';
 
 export interface LoyaltyPointHistoryEntry {
   entryType: LoyaltyPointEntryType;
@@ -153,6 +153,57 @@ export interface CustomerLoyaltyPoints {
   progressPercent: number;
   history: LoyaltyPointHistoryEntry[];
   badges: LoyaltyBadge[];
+}
+
+export type LoyaltyRewardStatus = 'issued' | 'redeemed' | 'expired' | 'cancelled';
+
+export interface LoyaltyReward {
+  id: string;
+  name: string;
+  description: string;
+  campaignId: string | null;
+  pointsCost: number;
+  minimumPoints: number;
+  startsAt: string;
+  endsAt: string;
+  stockQuantity: number | null;
+  remainingQuantity: number | null;
+  activeClaimCount: number;
+  redeemedCount: number;
+  maxClaimsPerCustomer: number;
+  redemptionValidityHours: number;
+  isActive: boolean;
+}
+
+export type LoyaltyRewardUnavailableReason = 'points_program_disabled' | 'not_enough_points' | 'sold_out' | 'customer_limit';
+
+export interface PublicLoyaltyReward {
+  id: string;
+  name: string;
+  description: string;
+  pointsCost: number;
+  minimumPoints: number;
+  remainingQuantity: number | null;
+  customerClaimCount: number;
+  maxClaimsPerCustomer: number;
+  canClaim: boolean;
+  unavailableReason: LoyaltyRewardUnavailableReason | null;
+  endsAt: string;
+}
+
+export interface LoyaltyRewardRedemption {
+  id: string;
+  rewardName: string;
+  code: string;
+  status: LoyaltyRewardStatus;
+  pointsCost: number;
+  issuedAt: string;
+  expiresAt: string;
+  redeemedAt: string | null;
+  redeemedBy?: string | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  customerName?: string;
 }
 
 // Internal account state. Email confirmation now comes from Supabase auth.

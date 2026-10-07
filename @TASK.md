@@ -82,13 +82,16 @@ Adicionar uma camada de progressão geral do cliente sem alterar retroativamente
 
 Não inferir valor gasto nem conceder pontos por compras enquanto o sistema não tiver uma fonte confiável desse valor.
 
-### Fase 3 — Catálogo de recompensas e cupons [ ]
+### Fase 3 — Catálogo de recompensas e cupons [~]
 
-- [ ] Permitir mais de uma recompensa por campanha ou catálogo global da empresa.
-- [ ] Configurar custo em pontos ou condição de elegibilidade, validade, quantidade disponível e limite por cliente.
-- [ ] Gerar código de resgate único, quando aplicável, e permitir validação pela equipe.
-- [ ] Registrar emissão, expiração, resgate e cancelamento com trilha auditável.
-- [ ] Impedir saldo negativo, resgates acima do estoque e reutilização de códigos.
+- [x] Permitir várias recompensas globais ou vinculadas a uma campanha.
+- [x] Configurar custo/mínimo de pontos, período da oferta, validade do código, estoque e limite por cliente.
+- [x] Gerar códigos únicos e permitir validação de uso único pela equipe.
+- [x] Registrar emissão, expiração, resgate e cancelamento em eventos auditáveis.
+- [x] Impedir saldo negativo, resgates acima do estoque e reutilização de códigos; devolver pontos quando código não usado expirar ou for cancelado.
+- [x] Integrar catálogo do proprietário, ofertas no cartão público e painel de validação para proprietário/equipe.
+- [x] Aplicar o patch aditivo no projeto Supabase vinculado.
+- [~] Validar manualmente o fluxo integrado na interface e as permissões RLS após a implantação.
 
 ### Fase 4 — Comunicação e integrações [ ]
 
