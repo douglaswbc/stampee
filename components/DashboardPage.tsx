@@ -82,6 +82,13 @@ const formatTimestamp = (timestamp: number, locale: string) =>
     minute: '2-digit',
   });
 
+const DashboardMetricRow: React.FC<{ label: string; value: number }> = ({ label, value }) => (
+  <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+    <dt className="min-w-0 break-words text-sm leading-5 text-muted-foreground">{label}</dt>
+    <dd className="m-0 shrink-0 text-right text-sm font-medium tabular-nums text-foreground">{value}</dd>
+  </div>
+);
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, customers }) => {
   const { currentOwner } = useAuth();
   const { t, language } = useLocale();
@@ -457,19 +464,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, custome
                   <CardDescription>{t(dashboardSummary.pointsEnabled ? 'Points enabled' : 'Points disabled')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="space-y-1 text-sm">
-                    <p>{dashboardSummary.pointsPerVisit} {t('points per verified visit')}</p>
-                    <p>{dashboardSummary.welcomePoints} {t('welcome points per new customer')}</p>
-                    <p>{dashboardSummary.loyaltyLevelCount} {t('loyalty levels')}</p>
-                    {dashboardSummary.welcomePoints > 0 && (
-                      <p className="text-xs text-muted-foreground">{t('The referrer earns half after the friend’s first verified visit.')}</p>
-                    )}
-                  </div>
-                  <div className="border-t border-border/70 pt-3 text-sm text-muted-foreground">
-                    <p>{dashboardSummary.rewardedReferralCount} {t('referrals rewarded')} · {dashboardSummary.pendingReferralCount} {t('pending referrals')}</p>
-                    <p className="mt-1">{dashboardSummary.referralPointsAwarded} {t('referral points awarded')}</p>
-                    <p className="mt-1">{dashboardSummary.welcomeBonusCustomerCount} {t('customers received welcome points')} · {dashboardSummary.welcomePointsAwarded} {t('welcome points awarded')}</p>
-                  </div>
+                  <dl className="space-y-2">
+                    <DashboardMetricRow label={t('points per verified visit')} value={dashboardSummary.pointsPerVisit} />
+                    <DashboardMetricRow label={t('welcome points per new customer')} value={dashboardSummary.welcomePoints} />
+                    <DashboardMetricRow label={t('loyalty levels')} value={dashboardSummary.loyaltyLevelCount} />
+                  </dl>
+                  {dashboardSummary.welcomePoints > 0 && (
+                    <p className="text-xs leading-5 text-muted-foreground">{t('The referrer earns half after the friend’s first verified visit.')}</p>
+                  )}
+                  <dl className="space-y-2 border-t border-border/70 pt-3">
+                    <DashboardMetricRow label={t('referrals rewarded')} value={dashboardSummary.rewardedReferralCount} />
+                    <DashboardMetricRow label={t('pending referrals')} value={dashboardSummary.pendingReferralCount} />
+                    <DashboardMetricRow label={t('referral points awarded')} value={dashboardSummary.referralPointsAwarded} />
+                    <DashboardMetricRow label={t('customers received welcome points')} value={dashboardSummary.welcomeBonusCustomerCount} />
+                    <DashboardMetricRow label={t('welcome points awarded')} value={dashboardSummary.welcomePointsAwarded} />
+                  </dl>
                   <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
                     <Link to="/settings?tab=loyalty">{t('Loyalty settings')}</Link>
                   </Button>

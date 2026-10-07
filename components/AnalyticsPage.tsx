@@ -329,54 +329,58 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             A quick pulse check on loyalty performance and customer activity.
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border/80 bg-card p-3 shadow-subtle">
-          <div className="flex items-center gap-2 pr-1 text-sm text-muted-foreground">
+        <div className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border border-border/80 bg-card p-3 shadow-subtle sm:flex sm:flex-wrap sm:items-end">
+          <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground sm:pr-1">
             <CalendarDays className="h-4 w-4" />
             Date range
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">From</label>
-            <Input
-              type="date"
-              className="h-10 w-full sm:w-[160px]"
-              value={startDate}
-              onChange={(event) => {
-                const value = event.target.value;
-                setStartDate(value);
-                if (value > endDate) setEndDate(value);
-              }}
-            />
+          <div className="grid min-w-0 grid-cols-1 gap-3 min-[400px]:grid-cols-2 sm:flex">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">From</label>
+              <Input
+                type="date"
+                className="h-10 w-full min-w-0 sm:w-[160px]"
+                value={startDate}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setStartDate(value);
+                  if (value > endDate) setEndDate(value);
+                }}
+              />
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">To</label>
+              <Input
+                type="date"
+                className="h-10 w-full min-w-0 sm:w-[160px]"
+                value={endDate}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setEndDate(value);
+                  if (value < startDate) setStartDate(value);
+                }}
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">To</label>
-            <Input
-              type="date"
-              className="h-10 w-full sm:w-[160px]"
-              value={endDate}
-              onChange={(event) => {
-                const value = event.target.value;
-                setEndDate(value);
-                if (value < startDate) setStartDate(value);
-              }}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => applyPresetRange(7)}>
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
+            <Button className="w-full sm:w-auto" type="button" variant="outline" size="sm" onClick={() => applyPresetRange(7)}>
               7D
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => applyPresetRange(14)}>
+            <Button className="w-full sm:w-auto" type="button" variant="outline" size="sm" onClick={() => applyPresetRange(14)}>
               14D
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => applyPresetRange(30)}>
+            <Button className="w-full sm:w-auto" type="button" variant="outline" size="sm" onClick={() => applyPresetRange(30)}>
               30D
             </Button>
           </div>
-          <Badge variant="outline" className="border-border/80 bg-card text-muted-foreground shadow-subtle">
-            {rangeLabel}
-          </Badge>
-          <Badge variant="secondary" className="text-muted-foreground">
-            {Math.max(0, selectedDayCount)} days
-          </Badge>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Badge variant="outline" className="max-w-full whitespace-normal border-border/80 bg-card text-muted-foreground shadow-subtle">
+              {rangeLabel}
+            </Badge>
+            <Badge variant="secondary" className="max-w-full whitespace-normal text-muted-foreground">
+              {Math.max(0, selectedDayCount)} days
+            </Badge>
+          </div>
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { LayoutGrid } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useLocale } from './LocaleProvider';
 
 const CATEGORIES = ["All", "Food & Drink", "Beauty & Wellness", "Services", "Retail"];
 
@@ -28,8 +29,17 @@ interface ResponsiveCardPreviewProps {
 }
 
 const ResponsiveCardPreview: React.FC<ResponsiveCardPreviewProps> = ({ template, onSelect }) => {
+    const { t } = useLocale();
     const containerRef = useRef<HTMLDivElement>(null);
     const [scale, setScale] = useState(1);
+    const localizedTemplate: Template = {
+        ...template,
+        name: t(template.name),
+        rewardName: t(template.rewardName),
+        tagline: template.tagline
+            ? t(template.tagline)
+            : t(`Collect ${template.totalStamps} stamps for a ${template.rewardName}`),
+    };
 
     const BASE_WIDTH = 380;
     const BASE_HEIGHT = 750;
@@ -67,7 +77,7 @@ const ResponsiveCardPreview: React.FC<ResponsiveCardPreviewProps> = ({ template,
                     }}
                 >
                     <LoyaltyCard 
-                        template={template} 
+                        template={localizedTemplate}
                         mode="active" 
                         className="w-full h-full pointer-events-none" 
                     />
@@ -78,16 +88,16 @@ const ResponsiveCardPreview: React.FC<ResponsiveCardPreviewProps> = ({ template,
 
             <div className="text-center space-y-2 w-full px-2">
                 <h3 className="font-bold text-2xl text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
-                    {template.name}
+                    {localizedTemplate.name}
                 </h3>
                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     <span className={cn(
                         "text-xs px-2.5 py-1 rounded-full font-semibold bg-secondary text-secondary-foreground border"
                     )}>
-                        {template.totalStamps} Stamps
+                        {template.totalStamps} {t('Stamps')}
                     </span>
-                    <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={template.rewardName}>
-                       {template.rewardName}
+                    <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={localizedTemplate.rewardName}>
+                       {localizedTemplate.rewardName}
                     </span>
                 </div>
             </div>
@@ -97,6 +107,7 @@ const ResponsiveCardPreview: React.FC<ResponsiveCardPreviewProps> = ({ template,
 
 export const TemplatesGallery: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const [activeCategory, setActiveCategory] = useState("All");
 
   const filteredTemplates = templates.filter(template => {
@@ -135,7 +146,7 @@ export const TemplatesGallery: React.FC = () => {
                             : "bg-white hover:bg-gray-100 border-gray-200 text-gray-600"
                     )}
                 >
-                    {category}
+                    {t(category)}
                 </Button>
             ))}
         </div>
