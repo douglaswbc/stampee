@@ -11,6 +11,7 @@ import { useSubscriptionContext } from "./SubscriptionContext";
 import { useLocale } from "./LocaleProvider";
 import { BUSINESS_CURRENCIES, formatCurrency, INTERFACE_LANGUAGES } from "../lib/i18n";
 import { updateCompanyLocalePreferences } from "../lib/db/profiles";
+import { resetOwnerBusinessData } from "../lib/db/dataManagement";
 import { LocalizedTree } from "./LocalizedTree";
 import { LoyaltyPointsSettings } from "./LoyaltyPointsSettings";
 
@@ -88,6 +89,11 @@ export const SettingsPage: React.FC = () => {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deleteAccountBusy, setDeleteAccountBusy] = useState(false);
+  const [isResetBusinessStepOneOpen, setIsResetBusinessStepOneOpen] = useState(false);
+  const [isResetBusinessStepTwoOpen, setIsResetBusinessStepTwoOpen] = useState(false);
+  const [resetBusinessConfirmText, setResetBusinessConfirmText] = useState("");
+  const [resetBusinessError, setResetBusinessError] = useState("");
+  const [resetBusinessBusy, setResetBusinessBusy] = useState(false);
 
   const handleProfileSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -183,6 +189,34 @@ export const SettingsPage: React.FC = () => {
     setIsDeleteStepTwoOpen(false);
     setDeleteConfirmText("");
     navigate("/signup");
+  };
+
+  const resetBusinessConfirmation = `RESET ${currentOwner?.businessName ?? ""}`;
+
+  const handleResetBusinessData = async () => {
+    setResetBusinessError("");
+    if (currentUser?.role !== "owner") {
+      setResetBusinessError(t("Only the business owner can reset company data."));
+      return;
+    }
+    if (resetBusinessConfirmText.trim().toUpperCase() !== resetBusinessConfirmation.trim().toUpperCase()) {
+      setResetBusinessError(t("The confirmation text does not match."));
+      return;
+    }
+
+    setResetBusinessBusy(true);
+    try {
+      const result = await resetOwnerBusinessData();
+      if (!result.ok) {
+        setResetBusinessError(t("Unable to reset business data. Refresh and try again."));
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setResetBusinessError(t("Unable to reset business data. Refresh and try again."));
+    } finally {
+      setResetBusinessBusy(false);
+    }
   };
 
   const handleDeleteStaff = async () => {
@@ -566,6 +600,29 @@ export const SettingsPage: React.FC = () => {
         </div>
       </section>
 
+      {currentUser?.role === "owner" && (
+        <section className="rounded-2xl md:rounded-3xl border border-amber-200 bg-amber-50 p-4 md:p-6 shadow-xs space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-lg md:text-xl font-semibold text-amber-950">{t("Reset business data")}</h2>
+            <p className="text-sm text-amber-900/90">{t("Clear this business's loyalty data and start over while keeping owner access, company preferences, and staff logins.")}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-sm text-amber-950">
+            {t("This removes campaigns, customers, cards, transactions, missions, points, rewards, redemption codes, and their history. It does not delete the database schema or uploaded campaign images.")}
+          </div>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              setResetBusinessError("");
+              setResetBusinessConfirmText("");
+              setIsResetBusinessStepOneOpen(true);
+            }}
+          >
+            {t("Reset business data")}
+          </Button>
+        </section>
+      )}
+
       <section className="rounded-2xl md:rounded-3xl border border-rose-200 bg-rose-50 p-4 md:p-6 shadow-xs space-y-4">
         <div className="space-y-1">
           <h2 className="text-lg md:text-xl font-semibold text-rose-900">Danger Zone</h2>
@@ -638,6 +695,72 @@ export const SettingsPage: React.FC = () => {
             </Button>
             <Button variant="destructive" onClick={handleDeleteStaff} disabled={deleteStaffBusy}>
               {deleteStaffBusy ? "Deleting..." : "Delete Staff"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isResetBusinessStepOneOpen} onOpenChange={(open) => !resetBusinessBusy && setIsResetBusinessStepOneOpen(open)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("Reset business data: Step 1 of 2")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p>{t("All campaigns, customer records, cards, visits, missions, points, rewards, and redemption history for this business will be permanently removed.")}</p>
+            <p>{t("Your owner login, company profile and preferences, and staff logins will remain available.")}</p>
+            <p className="font-medium text-rose-700">{t("This action cannot be undone.")}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResetBusinessStepOneOpen(false)}>{t("Cancel")}</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setIsResetBusinessStepOneOpen(false);
+                setResetBusinessError("");
+                setResetBusinessConfirmText("");
+                setIsResetBusinessStepTwoOpen(true);
+              }}
+            >
+              {t("Continue")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isResetBusinessStepTwoOpen}
+        onOpenChange={(open) => {
+          if (resetBusinessBusy) return;
+          setIsResetBusinessStepTwoOpen(open);
+          if (!open) {
+            setResetBusinessConfirmText("");
+            setResetBusinessError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("Reset business data: Step 2 of 2")}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">{t("Type this exact text to confirm the reset:")}</p>
+            <p className="rounded-lg bg-muted px-3 py-2 font-mono text-sm font-semibold break-all">{resetBusinessConfirmation}</p>
+            <Input
+              value={resetBusinessConfirmText}
+              onChange={(event) => setResetBusinessConfirmText(event.target.value)}
+              placeholder={resetBusinessConfirmation}
+              autoComplete="off"
+            />
+            {resetBusinessError && <div role="alert" className="text-sm text-rose-600">{resetBusinessError}</div>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsResetBusinessStepTwoOpen(false)} disabled={resetBusinessBusy}>{t("Cancel")}</Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleResetBusinessData()}
+              disabled={resetBusinessBusy || resetBusinessConfirmText.trim().toUpperCase() !== resetBusinessConfirmation.trim().toUpperCase()}
+            >
+              {resetBusinessBusy ? t("Resetting...") : t("Permanently reset business data")}
             </Button>
           </DialogFooter>
         </DialogContent>
