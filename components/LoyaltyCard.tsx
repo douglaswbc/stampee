@@ -286,6 +286,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   const getTransactionIcon = (type: Transaction['type']) => {
       switch(type) {
           case 'redeem': return Gift;
+          case 'mission_bonus': return Gift;
           case 'stamp_remove': return Minus;
           case 'issued': return CreditCard;
           default: return Plus;
@@ -295,6 +296,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   const getTransactionColor = (type: Transaction['type']) => {
       switch(type) {
           case 'redeem': return 'bg-purple-50 text-purple-600';
+          case 'mission_bonus': return 'bg-amber-50 text-amber-700';
           case 'stamp_remove': return 'bg-red-50 text-red-600';
           case 'issued': return 'bg-blue-50 text-blue-600';
           default: return 'bg-gray-50 text-gray-600';

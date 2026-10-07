@@ -57,6 +57,7 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    Notes:
    - [`supabase/migration.sql`](supabase/migration.sql) is the canonical fresh-install script. It includes the current schema, RLS policies, storage policies, and RPC functions.
    - The smaller SQL files in [`supabase/legacy-patches/`](supabase/legacy-patches/) are upgrade or repair scripts for older or existing projects and are not part of the default new-project setup.
+   - For an existing project, run [`supabase/legacy-patches/add_loyalty_missions.sql`](supabase/legacy-patches/add_loyalty_missions.sql) before deploying the matching application version. The patch adds the mission schema and secure RPCs; the current app continues to work while the deployment is prepared.
    - [`supabase/seed.sql`](supabase/seed.sql) is for local or development environments only because it creates a known demo account.
 
 5. Start the dev server:

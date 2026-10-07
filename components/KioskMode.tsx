@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Customer, IssuedCard, Template, Transaction } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Customer, IssuedCard, LoyaltyMission, Template, Transaction } from '../types';
 import { LoyaltyCard } from './LoyaltyCard';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -7,6 +7,7 @@ import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Plus, Gift, History, User, ChevronLeft, Minus, Lock, CheckCircle, RefreshCcw, ShieldCheck, Clock3 } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { fetchCardMissions, redeemMissionReward } from '../lib/db/missions';
 
 interface KioskModeProps {
   customer: Customer;
@@ -21,6 +22,10 @@ interface KioskModeProps {
   actorName: string;
   actorRole: 'owner' | 'staff';
   onScanRequest?: () => void;
+  onMissionCardUpdate?: (cardId: string, update: {
+    card: Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>;
+    transaction: Transaction;
+  }) => void;
   mutationBusy?: boolean;
 }
 
@@ -60,6 +65,8 @@ const formatKioskAction = (type: Transaction['type']) => {
             return 'Card issued';
         case 'redeem':
             return 'Reward redeemed';
+        case 'mission_bonus':
+            return 'Mission bonus stamps';
         case 'stamp_remove':
             return 'Stamp removed';
         default:
@@ -87,10 +94,14 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   actorId,
   actorName,
   actorRole,
+  onMissionCardUpdate,
   mutationBusy = false
 }) => {
   const [isAnimating, setIsAnimating] = useState(false);
   const [actionError, setActionError] = useState("");
+  const [missions, setMissions] = useState<LoyaltyMission[]>([]);
+  const [missionError, setMissionError] = useState("");
+  const [redeemingCompletionId, setRedeemingCompletionId] = useState<string | null>(null);
   
   // Confirmation States
   const [confirmAction, setConfirmAction] = useState<'stamp' | 'remove' | 'redeem' | null>(null);
@@ -103,6 +114,41 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   const remainingStamps = Math.max(template.totalStamps - card.stamps, 0);
   const recentHistory = [...card.history]
     .sort((a, b) => b.timestamp - a.timestamp);
+
+  useEffect(() => {
+    let active = true;
+    void fetchCardMissions(card.id).then(result => {
+      if (!active) return;
+      if (result.ok) {
+        setMissions(result.missions);
+        setMissionError("");
+      } else {
+        setMissionError('Unable to load mission progress.');
+      }
+    });
+    return () => { active = false; };
+  }, [card.id]);
+
+  const handleRedeemMissionReward = async (completionId: string) => {
+    setRedeemingCompletionId(completionId);
+    setMissionError("");
+    const result = await redeemMissionReward(completionId);
+    if (!result.ok) {
+      setMissionError(result.error === 'Mission reward was already redeemed.'
+        ? 'This mission reward was already redeemed.'
+        : result.error?.includes('No active card has enough space')
+          ? 'The customer needs an active card with room for the bonus stamps before this reward can be redeemed.'
+          : 'Unable to redeem this mission reward. Refresh the card and try again.');
+      setRedeemingCompletionId(null);
+      return;
+    }
+    if (result.card && result.transaction) {
+      onMissionCardUpdate?.(result.card.id, { card: result.card, transaction: result.transaction });
+    }
+    const refreshed = await fetchCardMissions(card.id);
+    if (refreshed.ok) setMissions(refreshed.missions);
+    setRedeemingCompletionId(null);
+  };
   const customerMeta = customer.mobile || customer.email || 'No contact details';
   const operatorLabel = actorRole === 'staff' ? 'Staff session' : 'Owner session';
   const confirmCopy = (() => {
@@ -151,6 +197,10 @@ export const KioskMode: React.FC<KioskModeProps> = ({
           } else if (confirmAction === 'redeem') {
               await performRedeem();
           }
+      if (confirmAction === 'stamp') {
+          const refreshedMissions = await fetchCardMissions(card.id);
+          if (refreshedMissions.ok) setMissions(refreshedMissions.missions);
+      }
           setConfirmAction(null);
           setRedemptionRemarks("");
       } catch {
@@ -337,6 +387,41 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                 <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                     {actionError}
                 </div>
+            )}
+
+            {(missions.length > 0 || missionError) && (
+              <section className="rounded-[30px] border border-black/5 bg-white p-5 shadow-[0_28px_60px_-40px_rgba(0,0,0,0.32)] sm:p-6">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b705c]">Loyalty missions</p>
+                    <h2 className="mt-2 text-xl font-bold tracking-tight text-[#1d1d1f]">Customer progress and rewards</h2>
+                  </div>
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-50 text-amber-700"><Gift size={18} /></div>
+                </div>
+                {missionError && <p role="alert" className="mt-4 text-sm text-rose-700">{missionError}</p>}
+                <div className="mt-4 space-y-3">
+                  {missions.map(mission => (
+                    <div key={mission.id} className="rounded-2xl border border-black/5 bg-[#fcfbf7] p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-[#1d1d1f]">{mission.name}</p>
+                          <p className="mt-1 text-sm text-[#5f6368]">{mission.progress ?? 0}/{mission.goalCount} {mission.missionType === 'visit_count' ? 'visits' : 'stamps on this card'}</p>
+                        </div>
+                        {mission.availableRewards ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{mission.availableRewards} reward ready</span> : null}
+                      </div>
+                      <p className="mt-2 text-sm text-[#5f6368]">{mission.rewardDescription}</p>
+                      {mission.completions?.filter(completion => !completion.redeemedAt).map(completion => completion.id ? (
+                        <div key={completion.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-black/5">
+                          <span className="text-sm font-medium text-[#1d1d1f]">Reward #{completion.completionNumber ?? 1} is ready to claim</span>
+                          <Button size="sm" className="rounded-full bg-[#1d1d1f]" disabled={redeemingCompletionId === completion.id} onClick={() => void handleRedeemMissionReward(completion.id!)}>
+                            {redeemingCompletionId === completion.id ? 'Saving…' : 'Confirm reward'}
+                          </Button>
+                        </div>
+                      ) : null)}
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
             
             {isLocked ? (
@@ -536,9 +621,11 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                                             ? "bg-emerald-100 text-emerald-600"
                                             : entry.type === 'stamp_remove'
                                                 ? "bg-rose-100 text-rose-600"
+                                                : entry.type === 'mission_bonus'
+                                                    ? "bg-amber-100 text-amber-700"
                                                 : "bg-[#eef5e8] text-[#4c7a2b]"
                                     )}>
-                                        {entry.type === 'redeem' ? <Gift size={16} /> : entry.type === 'stamp_remove' ? <Minus size={16} /> : <Plus size={16} />}
+                                        {entry.type === 'redeem' || entry.type === 'mission_bonus' ? <Gift size={16} /> : entry.type === 'stamp_remove' ? <Minus size={16} /> : <Plus size={16} />}
                                     </div>
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">

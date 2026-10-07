@@ -46,24 +46,6 @@ export async function insertIssuedCard(
   return { ok: true };
 }
 
-export async function updateIssuedCard(
-  cardId: string,
-  updates: Partial<Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>>
-): Promise<{ ok: boolean; error?: string }> {
-  const row: Record<string, unknown> = {};
-  if (updates.stamps !== undefined) row.stamps = updates.stamps;
-  if (updates.status !== undefined) row.status = updates.status;
-  if (updates.completedDate !== undefined) row.completed_date = updates.completedDate;
-  if (updates.lastVisit !== undefined) row.last_visit = updates.lastVisit;
-
-  const { error } = await supabase
-    .from('issued_cards')
-    .update(row)
-    .eq('id', cardId);
-  if (error) return { ok: false, error: 'Unable to update this card right now. Please try again.' };
-  return { ok: true };
-}
-
 export async function deleteIssuedCard(cardId: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('issued_cards')
@@ -77,21 +59,71 @@ export async function insertTransaction(
   cardId: string,
   tx: Transaction
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase.from('transactions').insert({
-    id: tx.id,
-    card_id: cardId,
-    type: tx.type,
-    amount: tx.amount,
-    date: tx.date,
-    timestamp: tx.timestamp,
-    title: tx.title,
-    remarks: tx.remarks ?? null,
-    actor_id: tx.actorId ?? null,
-    actor_name: tx.actorName ?? null,
-    actor_role: tx.actorRole ?? null,
+  const { error } = await supabase.rpc('record_card_action', {
+    card_id_input: cardId,
+    transaction_id_input: tx.id,
+    action_input: tx.type,
+    remarks_input: tx.remarks ?? null,
   });
-  if (error) return { ok: false, error: 'Unable to save this activity right now. Please try again.' };
+  if (error) return { ok: false, error: error.message || 'Unable to save this activity right now. Please try again.' };
   return { ok: true };
+}
+
+export interface CardActionResult {
+  card: Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>;
+  transaction: Transaction;
+}
+
+export async function recordCardAction(
+  cardId: string,
+  tx: Transaction
+): Promise<{ ok: true; data: CardActionResult } | { ok: false; error: string }> {
+  const { data, error } = await supabase.rpc('record_card_action', {
+    card_id_input: cardId,
+    transaction_id_input: tx.id,
+    action_input: tx.type,
+    remarks_input: tx.remarks ?? null,
+  });
+  if (error || !data || typeof data !== 'object') {
+    return { ok: false, error: error?.message || 'Unable to save this activity right now. Please try again.' };
+  }
+
+  const result = data as {
+    success?: boolean;
+    card?: { stamps?: number; status?: IssuedCard['status']; completedDate?: string | null; lastVisit?: string };
+    transaction?: {
+      id?: string; type?: Transaction['type']; amount?: number; date?: string; timestamp?: number;
+      title?: string; remarks?: string | null; actorId?: string | null; actorName?: string | null;
+      actorRole?: Transaction['actorRole'] | null;
+    };
+  };
+  if (!result.success || !result.card || !result.transaction?.id || !result.transaction.type) {
+    return { ok: false, error: 'The server did not confirm this card activity.' };
+  }
+
+  return {
+    ok: true,
+    data: {
+      card: {
+        stamps: result.card.stamps ?? 0,
+        status: result.card.status ?? 'Active',
+        completedDate: result.card.completedDate ?? undefined,
+        lastVisit: result.card.lastVisit ?? '',
+      },
+      transaction: {
+        id: result.transaction.id,
+        type: result.transaction.type,
+        amount: result.transaction.amount ?? 0,
+        date: result.transaction.date ?? '',
+        timestamp: result.transaction.timestamp ?? Date.now(),
+        title: result.transaction.title ?? '',
+        remarks: result.transaction.remarks ?? undefined,
+        actorId: result.transaction.actorId ?? undefined,
+        actorName: result.transaction.actorName ?? undefined,
+        actorRole: result.transaction.actorRole ?? undefined,
+      },
+    },
+  };
 }
 
 export async function countIssuedCards(ownerId: string): Promise<number> {

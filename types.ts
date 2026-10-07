@@ -56,7 +56,7 @@ export type StoredTemplate = Omit<Template, 'icon'> & {
 
 export interface Transaction {
   id: string;
-  type: 'stamp_add' | 'stamp_remove' | 'redeem' | 'issued';
+  type: 'stamp_add' | 'stamp_remove' | 'redeem' | 'issued' | 'mission_bonus';
   amount: number;
   date: string; // Formatted string for display
   timestamp: number; // For sorting
@@ -87,6 +87,41 @@ export interface Customer {
   mobile?: string;
   status: 'Active' | 'Inactive';
   cards: IssuedCard[];
+}
+
+export type LoyaltyMissionType = 'visit_count' | 'card_stamps';
+
+export interface LoyaltyMissionCompletion {
+  id?: string;
+  completionNumber?: number;
+  rewardDescription?: string;
+  rewardType?: 'benefit' | 'bonus_stamps';
+  rewardStamps?: number;
+  completedAt?: string;
+  redeemedAt?: string | null;
+}
+
+export interface LoyaltyMission {
+  id: string;
+  ownerId?: string;
+  campaignId: string | null;
+  name: string;
+  description: string;
+  missionType: LoyaltyMissionType;
+  goalCount: number;
+  startsAt: string;
+  endsAt: string;
+  rewardType: 'benefit' | 'bonus_stamps';
+  rewardDescription: string;
+  rewardStamps: number;
+  maxCompletions: number;
+  isActive: boolean;
+  completedCount: number;
+  redeemedCount: number;
+  participantCount?: number;
+  progress?: number;
+  availableRewards?: number;
+  completions?: LoyaltyMissionCompletion[];
 }
 
 // Internal account state. Email confirmation now comes from Supabase auth.

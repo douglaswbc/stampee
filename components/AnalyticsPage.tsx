@@ -203,7 +203,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
         const key = getDateKey(txDate);
         const bucket = bucketByKey.get(key);
         if (!bucket) return;
-        if (tx.type === "stamp_add") bucket.stampAdds += tx.amount || 1;
+        if (tx.type === "stamp_add" || tx.type === "mission_bonus") bucket.stampAdds += tx.amount || 1;
         if (tx.type === "redeem") bucket.redemptions += 1;
         bucket.total += 1;
       });

@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
-import { Template, Customer, IssuedCard } from './types';
+import { Template, Customer, IssuedCard, LoyaltyMission } from './types';
 import { templates } from './data/templates';
 import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
@@ -83,6 +83,8 @@ const SettingsPage = lazy(() => import('./components/SettingsPage').then((module
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
 const DashboardPage = lazy(() => import('./components/DashboardPage').then((module) => ({ default: module.DashboardPage })));
 const PublicCampaignSignupPage = lazy(() => import('./components/PublicCampaignSignupPage').then((module) => ({ default: module.PublicCampaignSignupPage })));
+const MissionsPage = lazy(() => import('./components/MissionsPage').then((module) => ({ default: module.MissionsPage })));
+const MissionProgressList = lazy(() => import('./components/MissionProgressList').then((module) => ({ default: module.MissionProgressList })));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -174,6 +176,7 @@ const PublicCardWrapper: React.FC = () => {
     card: IssuedCard;
     customer: Customer;
     template: Template;
+    missions: LoyaltyMission[];
   } | null>(null);
 
   useEffect(() => {
@@ -229,7 +232,12 @@ const PublicCardWrapper: React.FC = () => {
         template = fromStoredTemplate(stored);
       }
 
-      if (template) setCardData({ card, customer, template });
+      if (template) setCardData({
+        card,
+        customer,
+        template,
+        missions: Array.isArray(data.missions) ? data.missions as LoyaltyMission[] : [],
+      });
       setLoading(false);
     })();
   }, [slug, uniqueId]);
@@ -250,7 +258,7 @@ const PublicCardWrapper: React.FC = () => {
     );
   }
 
-  const { card, customer, template } = cardData;
+  const { card, customer, template, missions } = cardData;
   const isRedeemed = card.status === 'Redeemed';
   const cardBackgroundHex = resolveHexAndOpacity(template.colors.background, '#f5f5f5').hex;
   const isDarkBackground = getHexLuminance(cardBackgroundHex) < 0.38;
@@ -306,6 +314,7 @@ const PublicCardWrapper: React.FC = () => {
           </div>
         )}
       </div>
+      {withSuspense(<MissionProgressList missions={missions} />)}
     </div>
   );
 };
@@ -666,6 +675,7 @@ const AppRoutes: React.FC = () => {
                   />
                 )
               } />
+              <Route path="/missions" element={withSuspense(<MissionsPage campaigns={createdCards} />)} />
               <Route path="/gallery" element={withSuspense(<TemplatesGallery />)} />
               <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />
               <Route path="/transactions" element={withSuspense(<TransactionsPage customers={customers} />)} />

@@ -52,6 +52,8 @@ const formatAction = (type: Transaction['type']) => {
       return 'Card issued';
     case 'redeem':
       return 'Reward redeemed';
+    case 'mission_bonus':
+      return 'Mission bonus stamps';
     case 'stamp_remove':
       return 'Stamp removed';
     default:

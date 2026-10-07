@@ -20,7 +20,7 @@ import { resolveCardTemplate, toStoredTemplate } from '../lib/templateSerializat
 import { useAuth } from './AuthProvider';
 import { buildPublicCardUrl } from '../lib/links';
 import { ScanDetectionResult, ScanQrDialog } from './ScanQrDialog';
-import { insertIssuedCard, updateIssuedCard, deleteIssuedCard, insertTransaction, inspectScannedCard } from '../lib/db/issuedCards';
+import { insertIssuedCard, deleteIssuedCard, insertTransaction, recordCardAction, inspectScannedCard } from '../lib/db/issuedCards';
 import { upsertCustomer } from '../lib/db/customers';
 import { useSubscriptionContext } from './SubscriptionContext';
 
@@ -68,42 +68,30 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   const handleUpdateCard = async (customerId: string, cardId: string, updates: Partial<IssuedCard>) => {
     setMutationBusy(true);
     setMutationError("");
-    const dbUpdates: Parameters<typeof updateIssuedCard>[1] = {};
-    if (updates.stamps !== undefined) dbUpdates.stamps = updates.stamps;
-    if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if (updates.completedDate !== undefined) dbUpdates.completedDate = updates.completedDate;
-    if (updates.lastVisit !== undefined) dbUpdates.lastVisit = updates.lastVisit;
-
-    let wroteData = false;
     try {
-      if (Object.keys(dbUpdates).length > 0) {
-        const updateResult = await updateIssuedCard(cardId, dbUpdates);
-        if (!updateResult.ok) {
-          throw new Error(updateResult.error ?? "Failed to update the card.");
-        }
-        wroteData = true;
+      const existingCard = customers
+        .find(customer => customer.id === customerId)?.cards
+        .find(card => card.id === cardId);
+      const existingIds = new Set((existingCard?.history ?? []).map(transaction => transaction.id));
+      const newTransactions = (updates.history ?? []).filter(transaction => !existingIds.has(transaction.id));
+      if (!existingCard || newTransactions.length !== 1) {
+        throw new Error("A single new card action is required.");
       }
 
-      if (updates.history) {
-        const existingCard = customers
-          .find(c => c.id === customerId)?.cards
-          .find(c => c.id === cardId);
-        const existingIds = new Set((existingCard?.history ?? []).map(t => t.id));
-        const newTxs = updates.history.filter(t => !existingIds.has(t.id));
-        for (const tx of newTxs) {
-          const txResult = await insertTransaction(cardId, tx);
-          if (!txResult.ok) {
-            throw new Error(txResult.error ?? "Failed to record the card activity.");
-          }
-          wroteData = true;
-        }
-      }
+      const result = await recordCardAction(cardId, newTransactions[0]);
+      if (!result.ok) throw new Error(result.error);
+
+      const nextCard = {
+        ...existingCard,
+        ...result.data.card,
+        history: [result.data.transaction, ...existingCard.history],
+      };
 
       setCustomers(prev => prev.map(c => {
         if (c.id === customerId) {
           return {
             ...c,
-            cards: c.cards.map(card => card.id === cardId ? { ...card, ...updates } : card)
+            cards: c.cards.map(card => card.id === cardId ? nextCard : card)
           };
         }
         return c;
@@ -112,18 +100,33 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       if (activeKioskData && activeKioskData.customer.id === customerId) {
         setActiveKioskData(prev => {
           if (!prev) return null;
-          return { ...prev, card: { ...prev.card, ...updates } };
+          return { ...prev, card: nextCard };
         });
       }
-    } catch (error) {
-      if (wroteData) {
-        await refreshData?.();
-      }
+    } catch {
       setMutationError("Unable to update this card right now. Please try again.");
-      throw error;
+      throw new Error("Unable to update this card right now. Please try again.");
     } finally {
       setMutationBusy(false);
     }
+  };
+
+  const handleMissionCardUpdate = (cardId: string, update: {
+    card: Pick<IssuedCard, 'stamps' | 'status' | 'completedDate' | 'lastVisit'>;
+    transaction: Transaction;
+  }) => {
+    const matchingCustomer = customers.find(customer => customer.cards.some(card => card.id === cardId));
+    const existingCard = matchingCustomer?.cards.find(card => card.id === cardId);
+    if (!matchingCustomer || !existingCard) return;
+    const nextCard = {
+      ...existingCard,
+      ...update.card,
+      history: [update.transaction, ...existingCard.history],
+    };
+    setCustomers(prev => prev.map(customer => customer.id === matchingCustomer.id
+      ? { ...customer, cards: customer.cards.map(card => card.id === cardId ? nextCard : card) }
+      : customer));
+    setActiveKioskData(prev => prev?.card.id === cardId ? { ...prev, card: nextCard } : prev);
   };
 
   const handleRevokeCard = async (customerId: string, cardId: string) => {
@@ -398,6 +401,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           actorName={currentUser?.businessName ?? "Owner"}
           actorRole={currentUser?.role ?? "owner"}
           actorId={currentUser?.id}
+          onMissionCardUpdate={handleMissionCardUpdate}
           onScanRequest={() => setIsScanOpen(true)}
           mutationBusy={mutationBusy}
         />
