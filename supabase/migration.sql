@@ -21,9 +21,13 @@ create table if not exists public.profiles (
   tier text not null default 'free' check (tier in ('free', 'pro')),
   interface_language text not null default 'pt-BR' check (interface_language in ('pt-BR', 'es', 'en')),
   currency_code text not null default 'BRL' check (currency_code in ('BRL', 'USD', 'EUR', 'MXN', 'ARS', 'CLP', 'COP', 'PEN', 'UYU')),
+  time_zone text,
   tier_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles
+  add column if not exists time_zone text;
 
 alter table public.profiles enable row level security;
 
@@ -101,7 +105,7 @@ begin
     v_owner_id := null;
   end if;
 
-  insert into public.profiles (id, business_name, email, slug, role, owner_id, status, access, tier)
+  insert into public.profiles (id, business_name, email, slug, role, owner_id, status, access, tier, time_zone)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'business_name', ''),
@@ -111,7 +115,8 @@ begin
     v_owner_id,
     'unverified',
     'active',
-    'free'
+    'free',
+    case when v_role = 'owner' then nullif(new.raw_user_meta_data->>'time_zone', '') else null end
   )
   on conflict (id) do nothing;
   return new;
@@ -1750,7 +1755,7 @@ declare
   history_data jsonb;
   missions_payload jsonb;
 begin
-  select id, slug, business_name into owner_row
+  select id, slug, business_name, time_zone into owner_row
   from public.profiles where slug = slug_input and role = 'owner';
   if not found then return null; end if;
 
@@ -1806,7 +1811,8 @@ begin
     ),
     'customer', jsonb_build_object('id', customer_row.id, 'name', customer_row.name),
     'campaign', campaign_payload,
-    'missions', missions_payload
+    'missions', missions_payload,
+    'timeZone', owner_row.time_zone
   );
 end;
 $$ language plpgsql security definer
@@ -1815,7 +1821,8 @@ grant execute on function public.get_public_card(text, uuid) to anon, authentica
 -- Adds company-wide interface language and currency preferences.
 alter table public.profiles
   add column if not exists interface_language text not null default 'pt-BR',
-  add column if not exists currency_code text not null default 'BRL';
+  add column if not exists currency_code text not null default 'BRL',
+  add column if not exists time_zone text;
 
 do $$
 begin

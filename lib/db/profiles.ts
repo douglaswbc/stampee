@@ -15,6 +15,7 @@ export const profileToUser = (row: Record<string, unknown>): User => ({
   createdAt: row.created_at as string,
   interfaceLanguage: (row.interface_language as User['interfaceLanguage']) ?? 'pt-BR',
   currencyCode: (row.currency_code as User['currencyCode']) ?? 'BRL',
+  timeZone: typeof row.time_zone === 'string' ? row.time_zone : undefined,
 });
 
 export type ProfileFetchResult = {
@@ -68,7 +69,7 @@ export async function fetchStaffAccounts(ownerId: string): Promise<User[]> {
 
 export async function updateProfile(
   userId: string,
-  updates: { business_name?: string; email?: string; slug?: string; status?: string; access?: string; tier?: string; tier_expires_at?: string | null }
+  updates: { business_name?: string; email?: string; slug?: string; status?: string; access?: string; tier?: string; tier_expires_at?: string | null; time_zone?: string }
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('profiles')
@@ -80,7 +81,11 @@ export async function updateProfile(
 
 export async function updateCompanyLocalePreferences(
   ownerId: string,
-  updates: { interface_language: NonNullable<User['interfaceLanguage']>; currency_code: NonNullable<User['currencyCode']> }
+  updates: {
+    interface_language: NonNullable<User['interfaceLanguage']>;
+    currency_code: NonNullable<User['currencyCode']>;
+    time_zone: string;
+  }
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('profiles')

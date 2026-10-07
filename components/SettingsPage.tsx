@@ -15,8 +15,13 @@ import { resetOwnerBusinessData } from "../lib/db/dataManagement";
 import { APP_ORIGIN } from "../lib/siteConfig";
 import { LocalizedTree } from "./LocalizedTree";
 import { LoyaltyPointsSettings } from "./LoyaltyPointsSettings";
+import { getBrowserTimeZone, getSupportedTimeZones, getTimeZoneOptionLabel } from "../lib/timezones";
 
 const DELETE_CONFIRMATION = "DELETE";
+const TIME_ZONE_OPTIONS = getSupportedTimeZones().map(value => ({
+  value,
+  label: getTimeZoneOptionLabel(value),
+}));
 
 export const SettingsPage: React.FC = () => {
   const publicUrlHost = typeof window !== "undefined" ? window.location.host : new URL(APP_ORIGIN).host;
@@ -38,12 +43,20 @@ export const SettingsPage: React.FC = () => {
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
-  const [preferences, setPreferences] = useState({ language, currency });
+  const [preferences, setPreferences] = useState({
+    language,
+    currency,
+    timeZone: currentOwner?.timeZone ?? getBrowserTimeZone(),
+  });
   const [preferencesBusy, setPreferencesBusy] = useState(false);
   const [preferencesMessage, setPreferencesMessage] = useState("");
   const [preferencesError, setPreferencesError] = useState("");
 
-  useEffect(() => setPreferences({ language, currency }), [language, currency]);
+  useEffect(() => setPreferences({
+    language,
+    currency,
+    timeZone: currentOwner?.timeZone ?? getBrowserTimeZone(),
+  }), [language, currency, currentOwner?.timeZone]);
 
   const handlePreferencesSave = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -54,6 +67,7 @@ export const SettingsPage: React.FC = () => {
     const result = await updateCompanyLocalePreferences(currentOwner.id, {
       interface_language: preferences.language,
       currency_code: preferences.currency,
+      time_zone: preferences.timeZone,
     });
     setPreferencesBusy(false);
     if (!result.ok) {
@@ -297,7 +311,7 @@ export const SettingsPage: React.FC = () => {
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-lg md:text-xl font-semibold">{t("Company preferences")}</h2>
-          <p className="text-sm text-muted-foreground">{t("Choose the language used by the team and the company currency for future monetary reports.")}</p>
+          <p className="text-sm text-muted-foreground">{t("Choose the interface language, company currency, and time zone for schedules.")}</p>
         </div>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={handlePreferencesSave}>
           <div className="space-y-1.5">
@@ -313,6 +327,22 @@ export const SettingsPage: React.FC = () => {
             </select>
             <p className="text-xs text-muted-foreground">{t("Currency is ready for future monetary features; current loyalty activity does not record sales amounts.")}</p>
             <p className="text-xs text-muted-foreground">{t("Currency preview")}: {formatCurrency(1234.56, preferences.currency, preferences.language)}</p>
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label htmlFor="company-time-zone">{t("Company time zone")}</Label>
+            <select
+              id="company-time-zone"
+              value={preferences.timeZone}
+              onChange={event => setPreferences(current => ({ ...current, timeZone: event.target.value }))}
+              className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm"
+            >
+              {TIME_ZONE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              {t("Used for mission dates and times. The browser time zone is selected by default.")} ({getBrowserTimeZone()})
+            </p>
           </div>
           {preferencesError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{preferencesError}</p>}
           {preferencesMessage && <p role="status" className="text-sm text-emerald-700 sm:col-span-2">{t(preferencesMessage)}</p>}

@@ -32,6 +32,8 @@ A tabela `transactions` registra eventos como `stamp_add`, `stamp_remove`, `rede
 
 ### Fase 1 — Missões e desafios com carimbos (MVP) [~]
 
+O fuso da empresa e o padrão pelo navegador estão implementados no repositório. `supabase/legacy-patches/add_company_time_zone.sql` foi aplicado ao Supabase; falta validar essa configuração na interface de produção.
+
 Permitir que a empresa crie desafios de fidelidade associados a uma campanha, aproveitando eventos válidos de carimbo já registrados.
 
 Tipos iniciais:
@@ -44,7 +46,7 @@ Configuração da missão:
 - [x] nome e descrição;
 - [x] campanha relacionada, quando aplicável;
 - [x] tipo de meta e quantidade necessária;
-- [~] início e fim no fuso horário configurado pela empresa (atualmente a tela usa o fuso do navegador; falta configurar o fuso no perfil da empresa);
+- [x] início e fim no fuso horário configurado pela empresa; o fuso do navegador é o padrão quando a empresa ainda não tem uma preferência salva;
 - [x] estado ativa/inativa;
 - [x] recompensa definida entre bônus de carimbo ou benefício textual resgatável pela equipe;
 - [x] limite de conclusões por cliente e regra para permitir ou não repetição.
@@ -65,9 +67,9 @@ Regras obrigatórias:
 - [x] Cada concessão e resgate deve deixar histórico auditável, incluindo cliente, missão, horário e usuário da equipe quando houver ação manual.
 - [x] Missões encerradas não aceitam novo progresso, mas o cliente e a equipe ainda podem consultar conclusões anteriores.
 
-### Fase 2 — Pontos, níveis e emblemas [~]
+### Fase 2 — Pontos, níveis e emblemas [x]
 
-Implementação no repositório e patch no Supabase concluídos; falta validar manualmente o fluxo integrado no navegador.
+Implementação no repositório e patch no Supabase concluídos; fluxo integrado validado manualmente em produção pelo proprietário.
 
 Adicionar uma camada de progressão geral do cliente sem alterar retroativamente o saldo de carimbos dos cartões.
 
@@ -78,11 +80,11 @@ Adicionar uma camada de progressão geral do cliente sem alterar retroativamente
 - [x] Conceder emblemas por marcos verificáveis: primeira visita e conclusão de missão.
 - [x] Definir a política: pontos não expiram; remover carimbo reverte os pontos correspondentes até o saldo disponível; ajustes manuais são exclusivos do proprietário, exigem motivo e não podem deixar o saldo negativo; emblemas conquistados permanecem.
 - [x] Aplicar `supabase/legacy-patches/add_loyalty_points.sql`; uma consulta de leitura confirmou a tabela de ledger, a RPC pública, o trigger de pontos e a auditoria de remoção de carimbo.
-- [~] Validar manualmente a configuração de pontos e níveis, a pontuação após uma visita e o resumo público do cliente.
+- [x] Validar manualmente em produção a configuração de pontos e níveis, a pontuação após uma visita e o resumo público do cliente.
 
 Não inferir valor gasto nem conceder pontos por compras enquanto o sistema não tiver uma fonte confiável desse valor.
 
-### Fase 3 — Catálogo de recompensas e cupons [~]
+### Fase 3 — Catálogo de recompensas e cupons [x]
 
 - [x] Permitir várias recompensas globais ou vinculadas a uma campanha.
 - [x] Configurar custo/mínimo de pontos, período da oferta, validade do código, estoque e limite por cliente.
@@ -91,7 +93,7 @@ Não inferir valor gasto nem conceder pontos por compras enquanto o sistema não
 - [x] Impedir saldo negativo, resgates acima do estoque e reutilização de códigos; devolver pontos quando código não usado expirar ou for cancelado.
 - [x] Integrar catálogo do proprietário, ofertas no cartão público e painel de validação para proprietário/equipe.
 - [x] Aplicar o patch aditivo no projeto Supabase vinculado.
-- [~] Validar manualmente o fluxo integrado na interface e as permissões RLS após a implantação.
+- [x] Validar manualmente em produção o fluxo integrado na interface e as permissões RLS após a implantação.
 
 ### Fase 4 — Comunicação e integrações [ ]
 
@@ -117,20 +119,20 @@ Toda operação que concede bônus ou marca uma missão como resgatada deve ocor
 - [x] A meta só é concluída uma vez por ciclo configurado, inclusive com requisições repetidas ou concorrentes.
 - [x] A equipe consegue conferir a elegibilidade e registrar a entrega uma única vez; o histórico identifica quem fez a operação.
 - [x] Missões inativas, futuras ou expiradas não concedem progresso/recompensa fora das regras definidas.
-- [~] Compatibilidade dos dados e políticas existentes de cartões, carimbos, login, resgate e RLS: a migration é aditiva; falta validar o fluxo integrado.
+- [x] Compatibilidade dos dados e políticas existentes de cartões, carimbos, login, resgate e RLS: a migration é aditiva; fluxo integrado validado em produção pelo proprietário.
 - [x] A migration pode ser aplicada sem apagar ou recriar dados atuais.
 
 ## Ordem sugerida de execução
 
 1. [x] Inspecionar rotas, componentes, serviços, migrations e políticas RLS existentes; confirmar o fluxo real de carimbo e resgate.
-2. [~] Definir formalmente ciclo da missão, eventos que contam, fuso horário e limite de repetição. (eventos e limite estao definidos; falta configurar o fuso da empresa).
+2. [x] Definir formalmente ciclo da missão, eventos que contam, fuso horário e limite de repetição; a configuração do fuso foi implementada no perfil da empresa com padrão do navegador.
 3. [x] Criar migration aditiva, constraints, índices, políticas e operações seguras para criar missão, atualizar progresso e resgatar recompensa.
 4. [x] Implementar tipos e acesso a dados no frontend sem duplicar regras de negócio no cliente.
 5. [x] Criar gerenciamento de missões no painel do proprietário.
 6. [x] Exibir progresso e conclusão na página pública do cartão.
 7. [x] Integrar conferência/entrega à interface da equipe e ao histórico.
-8. [~] Analytics de missões implementado; falta documentar o procedimento operacional.
-9. [~] Validar permissões e casos de duplicidade, concorrência, expiração e compatibilidade com cartões existentes (falta validar o fluxo integrado, inclusive concorrência e RLS).
+8. [x] Analytics de missões implementado; procedimento operacional documentado em [docs/operacao-de-missoes.md](docs/operacao-de-missoes.md).
+9. [x] Permissões e casos de duplicidade, concorrência, expiração e compatibilidade com cartões existentes validados em produção pelo proprietário.
 
 ## Fora do escopo inicial
 

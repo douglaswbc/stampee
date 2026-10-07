@@ -9,6 +9,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useLocale } from './LocaleProvider';
 import { LocalizedTree } from './LocalizedTree';
+import { useAuth } from './AuthProvider';
+import { formatDateInTimeZone, formatDateTimeLocal, getBrowserTimeZone, parseDateTimeLocal } from '../lib/timezones';
 
 interface MissionsPageProps {
   campaigns: Template[];
@@ -30,12 +32,7 @@ type MissionForm = {
   isActive: boolean;
 };
 
-const toLocalInput = (date: Date) => {
-  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return adjusted.toISOString().slice(0, 16);
-};
-
-const emptyForm = (campaignId = ''): MissionForm => {
+const emptyForm = (campaignId = '', timeZone = getBrowserTimeZone()): MissionForm => {
   const startsAt = new Date();
   startsAt.setSeconds(0, 0);
   const endsAt = new Date(startsAt.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -45,8 +42,8 @@ const emptyForm = (campaignId = ''): MissionForm => {
     description: '',
     missionType: 'visit_count',
     goalCount: '3',
-    startsAt: toLocalInput(startsAt),
-    endsAt: toLocalInput(endsAt),
+    startsAt: formatDateTimeLocal(startsAt, timeZone),
+    endsAt: formatDateTimeLocal(endsAt, timeZone),
     rewardType: 'benefit',
     rewardDescription: '',
     rewardStamps: '1',
@@ -56,14 +53,14 @@ const emptyForm = (campaignId = ''): MissionForm => {
   };
 };
 
-const missionToForm = (mission: LoyaltyMission): MissionForm => ({
+const missionToForm = (mission: LoyaltyMission, timeZone: string): MissionForm => ({
   campaignId: mission.campaignId ?? '',
   name: mission.name,
   description: mission.description,
   missionType: mission.missionType,
   goalCount: String(mission.goalCount),
-  startsAt: toLocalInput(new Date(mission.startsAt)),
-  endsAt: toLocalInput(new Date(mission.endsAt)),
+  startsAt: formatDateTimeLocal(mission.startsAt, timeZone),
+  endsAt: formatDateTimeLocal(mission.endsAt, timeZone),
   rewardType: mission.rewardType,
   rewardDescription: mission.rewardDescription,
   rewardStamps: String(mission.rewardStamps || 1),
@@ -72,17 +69,14 @@ const missionToForm = (mission: LoyaltyMission): MissionForm => ({
   isActive: mission.isActive,
 });
 
-const formatDate = (value: string, language: string) => new Intl.DateTimeFormat(language, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-}).format(new Date(value));
-
 export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const { t, language } = useLocale();
+  const { currentOwner } = useAuth();
+  const timeZone = currentOwner?.timeZone ?? getBrowserTimeZone();
   const [missions, setMissions] = useState<LoyaltyMission[]>([]);
   const [catalogRewards, setCatalogRewards] = useState<LoyaltyReward[]>([]);
   const [catalogError, setCatalogError] = useState('');
-  const [form, setForm] = useState<MissionForm>(() => emptyForm(campaigns[0]?.id ?? ''));
+  const [form, setForm] = useState<MissionForm>(() => emptyForm(campaigns[0]?.id ?? '', timeZone));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -90,16 +84,23 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
+  useEffect(() => {
+    if (editingId) return;
+    setForm(current => current.name.trim() || current.description.trim()
+      ? current
+      : emptyForm(current.campaignId || campaigns[0]?.id || '', timeZone));
+  }, [timeZone, editingId]);
+
   const campaignNames = useMemo(() => new Map(campaigns.map(campaign => [campaign.id, campaign.name])), [campaigns]);
   const eligibleCatalogRewards = useMemo(() => {
-    const startsAt = new Date(form.startsAt).getTime();
-    const endsAt = new Date(form.endsAt).getTime();
+    const startsAt = parseDateTimeLocal(form.startsAt, timeZone)?.getTime() ?? Number.NaN;
+    const endsAt = parseDateTimeLocal(form.endsAt, timeZone)?.getTime() ?? Number.NaN;
     return catalogRewards.filter(reward => {
       const campaignMatches = reward.campaignId === null || reward.campaignId === form.campaignId;
       const datesOverlap = new Date(reward.startsAt).getTime() < endsAt && new Date(reward.endsAt).getTime() > startsAt;
       return (reward.isActive && campaignMatches && datesOverlap) || reward.id === form.catalogRewardId;
     });
-  }, [catalogRewards, form.campaignId, form.catalogRewardId, form.startsAt, form.endsAt]);
+  }, [catalogRewards, form.campaignId, form.catalogRewardId, form.startsAt, form.endsAt, timeZone]);
 
   const loadMissions = async () => {
     setLoading(true);
@@ -128,7 +129,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(emptyForm(campaigns[0]?.id ?? ''));
+    setForm(emptyForm(campaigns[0]?.id ?? '', timeZone));
     setIsFormOpen(false);
     setError('');
     setNotice('');
@@ -136,7 +137,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
 
   const handleEdit = (mission: LoyaltyMission) => {
     setEditingId(mission.id);
-    setForm(missionToForm(mission));
+    setForm(missionToForm(mission, timeZone));
     setIsFormOpen(true);
     setError('');
     setNotice('');
@@ -146,8 +147,8 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const toInput = (): MissionInput | null => {
     const goalCount = Number(form.goalCount);
     const maxCompletions = Number(form.maxCompletions);
-    const startsAt = new Date(form.startsAt);
-    const endsAt = new Date(form.endsAt);
+    const startsAt = parseDateTimeLocal(form.startsAt, timeZone);
+    const endsAt = parseDateTimeLocal(form.endsAt, timeZone);
     const rewardStamps = form.rewardType === 'bonus_stamps' ? Number(form.rewardStamps) : 0;
     const selectedCatalogReward = catalogRewards.find(reward => reward.id === form.catalogRewardId);
     if (!form.campaignId || !form.name.trim()
@@ -168,7 +169,11 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
       setError(t('Bonus stamps must be a whole number between 1 and 20.'));
       return null;
     }
-    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+    if (!startsAt || !endsAt) {
+      setError(t('Choose start and end times that exist in the company time zone.'));
+      return null;
+    }
+    if (endsAt <= startsAt) {
       setError(t('Choose a valid period. The end must be after the start.'));
       return null;
     }
@@ -213,7 +218,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
     }
     setNotice(t(editingId ? 'Mission updated.' : 'Mission created.'));
     setEditingId(null);
-    setForm(emptyForm(campaigns[0]?.id ?? ''));
+    setForm(emptyForm(campaigns[0]?.id ?? '', timeZone));
     setIsFormOpen(false);
     await loadMissions();
   };
@@ -307,12 +312,14 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
             <Input id="mission-goal" type="number" min={1} max={1000} step={1} value={form.goalCount} onChange={event => setForm({ ...form, goalCount: event.target.value })} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="mission-start">{t('Starts at (your local time)')}</Label>
+            <Label htmlFor="mission-start">{t('Starts at (company time)')}</Label>
             <Input id="mission-start" type="datetime-local" value={form.startsAt} onChange={event => setForm({ ...form, startsAt: event.target.value })} required />
+            <p className="text-xs text-muted-foreground">{timeZone}</p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="mission-end">{t('Ends at (your local time)')}</Label>
+            <Label htmlFor="mission-end">{t('Ends at (company time)')}</Label>
             <Input id="mission-end" type="datetime-local" value={form.endsAt} onChange={event => setForm({ ...form, endsAt: event.target.value })} required />
+            <p className="text-xs text-muted-foreground">{timeZone}</p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="mission-reward-type">{t('Reward type')}</Label>
@@ -393,7 +400,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
                 <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                   <span>{campaignNames.get(mission.campaignId ?? '') ?? 'Archived campaign'}</span>
                   <span>{mission.goalCount} {t(mission.missionType === 'visit_count' ? 'visits' : 'stamps per card')}</span>
-                  <span className="inline-flex items-center gap-1"><Clock3 size={14} />{formatDate(mission.startsAt, language)} – {formatDate(mission.endsAt, language)}</span>
+                  <span className="inline-flex items-center gap-1"><Clock3 size={14} />{formatDateInTimeZone(mission.startsAt, language, timeZone)} – {formatDateInTimeZone(mission.endsAt, language, timeZone)}</span>
                 </div>
                 <p className="mt-3 inline-flex items-center gap-2 text-sm"><Gift size={15} />{mission.rewardDescription}</p>
               </div>

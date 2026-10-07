@@ -24,6 +24,7 @@ import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
 import { APP_ORIGIN } from './lib/siteConfig';
+import { getBrowserTimeZone } from './lib/timezones';
 
 const SITE_ORIGIN = APP_ORIGIN;
 const DEFAULT_SOCIAL_DESCRIPTION = 'Stampfy is a digital loyalty card platform for small businesses, including loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.';
@@ -184,6 +185,7 @@ const PublicCardWrapper: React.FC = () => {
     customer: Customer;
     template: Template;
     missions: LoyaltyMission[];
+    timeZone: string;
     loyaltyPoints: CustomerLoyaltyPoints | null;
     referralCode: string | null;
   } | null>(null);
@@ -263,6 +265,7 @@ const PublicCardWrapper: React.FC = () => {
         customer,
         template,
         missions: Array.isArray(data.missions) ? data.missions as LoyaltyMission[] : [],
+        timeZone: typeof data.timeZone === 'string' ? data.timeZone : getBrowserTimeZone(),
         loyaltyPoints: parseCustomerLoyaltyPoints(loyaltyPointsData),
         referralCode,
       });
@@ -286,7 +289,7 @@ const PublicCardWrapper: React.FC = () => {
     );
   }
 
-  const { card, customer, template, missions, loyaltyPoints, referralCode } = cardData;
+  const { card, customer, template, missions, timeZone, loyaltyPoints, referralCode } = cardData;
   const referralUrl = slug && referralCode
     ? buildCampaignSignupUrl(slug, card.campaignId || template.id, referralCode)
     : null;
@@ -360,7 +363,7 @@ const PublicCardWrapper: React.FC = () => {
       </div>
       <PublicLoyaltyPoints summary={loyaltyPoints} referralUrl={referralUrl} />
       <PublicLoyaltyRewards slug={slug ?? ''} cardUniqueId={card.uniqueId} onPointsRefresh={refreshLoyaltyPoints} />
-      {withSuspense(<MissionProgressList missions={missions} />)}
+      {withSuspense(<MissionProgressList missions={missions} timeZone={timeZone} />)}
     </div>
   );
 };

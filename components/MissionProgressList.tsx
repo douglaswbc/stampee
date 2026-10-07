@@ -3,17 +3,14 @@ import { CheckCircle2, Clock3, Gift, Sparkles } from 'lucide-react';
 import type { LoyaltyMission } from '../types';
 import { useLocale } from './LocaleProvider';
 import { LocalizedTree } from './LocalizedTree';
+import { formatDateInTimeZone, getBrowserTimeZone } from '../lib/timezones';
 
 interface MissionProgressListProps {
   missions: LoyaltyMission[];
+  timeZone?: string;
 }
 
-const formatMissionDate = (value: string, locale: string) => new Intl.DateTimeFormat(locale, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-}).format(new Date(value));
-
-export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missions }) => {
+export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missions, timeZone = getBrowserTimeZone() }) => {
   const { language, t } = useLocale();
   if (!missions.length) return null;
 
@@ -71,7 +68,7 @@ export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missio
                     {t(mission.rewardType === 'catalog_reward' ? 'Catalog reward unlocked' : 'Reward ready')}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">Ends {formatMissionDate(mission.endsAt, language)}</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">Ends {formatDateInTimeZone(mission.endsAt, language, timeZone)}</span>
                 )}
               </div>
               {mission.availableRewards ? <p className="mt-2 text-xs text-gray-500">

@@ -239,4 +239,5 @@ export interface User {
   createdAt: string;
   interfaceLanguage?: InterfaceLanguage;
   currencyCode?: BusinessCurrency;
+  timeZone?: string;
 }

@@ -4,6 +4,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { fetchProfile, fetchProfileDetailed, fetchStaffAccounts, updateProfile as dbUpdateProfile } from "../lib/db/profiles";
 import { normalizeSlug } from "../lib/slug";
 import { buildAppUrl, DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { getBrowserTimeZone } from "../lib/timezones";
 
 type AuthUserLike = {
   id: string;
@@ -113,6 +114,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: "unverified",
       access: "active",
       tier: "free",
+      time_zone: role === "owner"
+        ? (typeof metadata.time_zone === "string" ? metadata.time_zone : getBrowserTimeZone())
+        : null,
     };
 
     let { error } = await supabase.from("profiles").insert(payload);
@@ -148,6 +152,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStaffAccounts([]);
       setIsEmailVerified(false);
       return;
+    }
+
+    if (profile.role === "owner" && !profile.timeZone) {
+      const browserTimeZone = getBrowserTimeZone();
+      profile = { ...profile, timeZone: browserTimeZone };
+      try {
+        await dbUpdateProfile(profile.id, { time_zone: browserTimeZone });
+      } catch {
+        // Keep the browser time zone for this session if the database patch is pending.
+      }
     }
 
     setCurrentUser(profile);
@@ -333,6 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             business_name: payload.businessName.trim(),
             slug: payload.slug,
             role: "owner",
+            time_zone: getBrowserTimeZone(),
           },
           emailRedirectTo: buildAppUrl("/login"),
         },
@@ -378,6 +393,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             business_name: "Demo Donut Co.",
             slug: "demo-donut",
             role: "owner",
+            time_zone: getBrowserTimeZone(),
           },
         },
       });

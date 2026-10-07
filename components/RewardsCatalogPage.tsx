@@ -8,6 +8,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { useLocale } from './LocaleProvider';
 import { LocalizedTree } from './LocalizedTree';
+import { useAuth } from './AuthProvider';
+import { formatDateInTimeZone, formatDateTimeLocal, getBrowserTimeZone, parseDateTimeLocal } from '../lib/timezones';
 
 interface RewardsCatalogPageProps {
   campaigns: Template[];
@@ -27,12 +29,7 @@ interface RewardForm {
   isActive: boolean;
 }
 
-const toLocalInput = (date: Date) => {
-  const adjusted = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return adjusted.toISOString().slice(0, 16);
-};
-
-const emptyForm = (): RewardForm => {
+const emptyForm = (timeZone = getBrowserTimeZone()): RewardForm => {
   const startsAt = new Date();
   startsAt.setSeconds(0, 0);
   const endsAt = new Date(startsAt.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -42,8 +39,8 @@ const emptyForm = (): RewardForm => {
     campaignId: '',
     pointsCost: '0',
     minimumPoints: '0',
-    startsAt: toLocalInput(startsAt),
-    endsAt: toLocalInput(endsAt),
+    startsAt: formatDateTimeLocal(startsAt, timeZone),
+    endsAt: formatDateTimeLocal(endsAt, timeZone),
     stockQuantity: '',
     maxClaimsPerCustomer: '1',
     redemptionValidityHours: '168',
@@ -51,29 +48,26 @@ const emptyForm = (): RewardForm => {
   };
 };
 
-const rewardToForm = (reward: LoyaltyReward): RewardForm => ({
+const rewardToForm = (reward: LoyaltyReward, timeZone: string): RewardForm => ({
   name: reward.name,
   description: reward.description,
   campaignId: reward.campaignId ?? '',
   pointsCost: String(reward.pointsCost),
   minimumPoints: String(reward.minimumPoints),
-  startsAt: toLocalInput(new Date(reward.startsAt)),
-  endsAt: toLocalInput(new Date(reward.endsAt)),
+  startsAt: formatDateTimeLocal(reward.startsAt, timeZone),
+  endsAt: formatDateTimeLocal(reward.endsAt, timeZone),
   stockQuantity: reward.stockQuantity === null ? '' : String(reward.stockQuantity),
   maxClaimsPerCustomer: String(reward.maxClaimsPerCustomer),
   redemptionValidityHours: String(reward.redemptionValidityHours),
   isActive: reward.isActive,
 });
 
-const formatDate = (value: string, language: string) => new Intl.DateTimeFormat(language, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-}).format(new Date(value));
-
 export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaigns }) => {
   const { t, language } = useLocale();
+  const { currentOwner } = useAuth();
+  const timeZone = currentOwner?.timeZone ?? getBrowserTimeZone();
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
-  const [form, setForm] = useState<RewardForm>(emptyForm);
+  const [form, setForm] = useState<RewardForm>(() => emptyForm(timeZone));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -81,6 +75,13 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const campaignNames = useMemo(() => new Map(campaigns.map(campaign => [campaign.id, campaign.name])), [campaigns]);
+
+  useEffect(() => {
+    if (editingId) return;
+    setForm(current => current.name.trim() || current.description.trim()
+      ? current
+      : emptyForm(timeZone));
+  }, [timeZone, editingId]);
 
   const loadRewards = async () => {
     setLoading(true);
@@ -98,21 +99,21 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(emptyForm());
+    setForm(emptyForm(timeZone));
     setIsFormOpen(false);
     setError('');
     setNotice('');
   };
 
-  const toInput = (id: string | null): LoyaltyRewardInput => ({
+  const toInput = (id: string | null, startsAt: Date, endsAt: Date): LoyaltyRewardInput => ({
     id,
     name: form.name.trim(),
     description: form.description.trim(),
     campaignId: form.campaignId || null,
     pointsCost: Number(form.pointsCost),
     minimumPoints: Number(form.minimumPoints),
-    startsAt: new Date(form.startsAt).toISOString(),
-    endsAt: new Date(form.endsAt).toISOString(),
+    startsAt: startsAt.toISOString(),
+    endsAt: endsAt.toISOString(),
     stockQuantity: form.stockQuantity.trim() ? Number(form.stockQuantity) : null,
     maxClaimsPerCustomer: Number(form.maxClaimsPerCustomer),
     redemptionValidityHours: Number(form.redemptionValidityHours),
@@ -129,13 +130,19 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
       setError(t('Enter whole numbers for points, stock, limits, and code validity.'));
       return;
     }
-    if (new Date(form.endsAt).getTime() <= new Date(form.startsAt).getTime()) {
+    const startsAt = parseDateTimeLocal(form.startsAt, timeZone);
+    const endsAt = parseDateTimeLocal(form.endsAt, timeZone);
+    if (!startsAt || !endsAt) {
+      setError(t('Choose start and end times that exist in the company time zone.'));
+      return;
+    }
+    if (endsAt <= startsAt) {
       setError(t('Choose a valid reward period. The end must be after the start.'));
       return;
     }
 
     setSaving(true);
-    const result = await saveOwnerLoyaltyReward(toInput(editingId));
+    const result = await saveOwnerLoyaltyReward(toInput(editingId, startsAt, endsAt));
     setSaving(false);
     if (!result.ok) {
       setError(t('Unable to save this reward. Check its rules and stock, then try again.'));
@@ -148,7 +155,7 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
 
   const startEditing = (reward: LoyaltyReward) => {
     setEditingId(reward.id);
-    setForm(rewardToForm(reward));
+    setForm(rewardToForm(reward, timeZone));
     setIsFormOpen(true);
     setError('');
     setNotice('');
@@ -232,12 +239,14 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
               <Input id="reward-minimum-points" type="number" min={0} max={100000000} step={1} value={form.minimumPoints} onChange={event => setForm(current => ({ ...current, minimumPoints: event.target.value }))} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reward-starts-at">{t('Offer starts (your local time)')}</Label>
+              <Label htmlFor="reward-starts-at">{t('Offer starts (company time)')}</Label>
               <Input id="reward-starts-at" type="datetime-local" value={form.startsAt} onChange={event => setForm(current => ({ ...current, startsAt: event.target.value }))} required />
+              <p className="text-xs text-muted-foreground">{timeZone}</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reward-ends-at">{t('Offer ends (your local time)')}</Label>
+              <Label htmlFor="reward-ends-at">{t('Offer ends (company time)')}</Label>
               <Input id="reward-ends-at" type="datetime-local" value={form.endsAt} onChange={event => setForm(current => ({ ...current, endsAt: event.target.value }))} required />
+              <p className="text-xs text-muted-foreground">{timeZone}</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="reward-stock">{t('Stock quantity')}</Label>
@@ -298,7 +307,7 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
                     <p><span className="text-muted-foreground">{t('Stock')}:</span> {reward.stockQuantity === null ? t('Unlimited') : `${reward.remainingQuantity ?? 0} / ${reward.stockQuantity} ${t('remaining')}`}</p>
                     <p><span className="text-muted-foreground">{t('Claims')}:</span> {reward.activeClaimCount} · {t('Redeemed')}: {reward.redeemedCount}</p>
                   </div>
-                  <p className="mt-3 text-xs text-muted-foreground">{formatDate(reward.startsAt, language)} – {formatDate(reward.endsAt, language)} · {reward.redemptionValidityHours} {t('hours to redeem')}</p>
+                  <p className="mt-3 text-xs text-muted-foreground">{formatDateInTimeZone(reward.startsAt, language, timeZone)} – {formatDateInTimeZone(reward.endsAt, language, timeZone)} · {reward.redemptionValidityHours} {t('hours to redeem')}</p>
                 </article>
               ))}
             </div>
