@@ -39,7 +39,7 @@ export const SignupConfirmationPage: React.FC = () => {
           <div className="confirm-float-a absolute bottom-0 left-1/3 h-[18rem] w-[18rem] rounded-full bg-[#c7dab7]/42 blur-[84px]" />
         </div>
 
-        <header className="relative mx-auto flex max-w-[88rem] items-center justify-between px-6 pb-4 pt-6 sm:px-8">
+        <header className="relative mx-auto flex max-w-[88rem] items-center justify-between gap-3 px-4 pb-4 pt-6 sm:px-8">
           <Link to="/" className="inline-flex items-center">
             <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-10 w-auto" />
           </Link>
@@ -51,8 +51,8 @@ export const SignupConfirmationPage: React.FC = () => {
           </Link>
         </header>
 
-        <main className="relative mx-auto flex w-full max-w-[88rem] px-6 pb-20 pt-6 sm:px-8 sm:pt-10">
-          <section className="w-full rounded-[2rem] border border-black/[0.08] bg-white/80 p-6 shadow-[0_24px_64px_-42px_rgba(0,0,0,0.3)] backdrop-blur-sm sm:p-10 lg:p-12">
+        <main className="relative mx-auto flex w-full max-w-[88rem] px-4 pb-20 pt-6 sm:px-8 sm:pt-10">
+          <section className="w-full rounded-[2rem] border border-black/[0.08] bg-white/80 p-5 shadow-[0_24px_64px_-42px_rgba(0,0,0,0.3)] backdrop-blur-sm sm:p-10 lg:p-12">
             <div className="flex h-14 w-14 items-center justify-center rounded-[1.1rem] bg-[#efe6d5] text-[#5f4a2b]">
               <MailCheck className="h-7 w-7" strokeWidth={2.1} />
             </div>

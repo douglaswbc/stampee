@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Gift, Pencil, Plus, TicketCheck } from 'lucide-react';
+import { ChevronUp, Gift, Pencil, Plus, TicketCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { LoyaltyReward, Template } from '../types';
 import { fetchOwnerLoyaltyRewards, saveOwnerLoyaltyReward, type LoyaltyRewardInput } from '../lib/db/rewards';
@@ -75,6 +75,7 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
   const [form, setForm] = useState<RewardForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -98,6 +99,7 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
   const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm());
+    setIsFormOpen(false);
     setError('');
     setNotice('');
   };
@@ -147,6 +149,7 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
   const startEditing = (reward: LoyaltyReward) => {
     setEditingId(reward.id);
     setForm(rewardToForm(reward));
+    setIsFormOpen(true);
     setError('');
     setNotice('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -172,19 +175,39 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
             <h1 className="mt-2 text-3xl font-bold tracking-tight">{t('Rewards')}</h1>
             <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{t('Create global or campaign rewards and control points, stock, validity, and customer limits.')}</p>
           </div>
-          <Button asChild variant="outline"><Link to="/reward-redemptions"><TicketCheck size={16} className="mr-2" />{t('Manage reward codes')}</Link></Button>
+          <Button asChild variant="outline" className="w-full sm:w-auto"><Link to="/reward-redemptions"><TicketCheck size={16} className="mr-2" />{t('Manage reward codes')}</Link></Button>
         </div>
 
         <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-subtle md:p-6">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold">{t(editingId ? 'Edit reward' : 'Create a reward')}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t('A zero points cost makes a free reward. Minimum points can be used as a verifiable eligibility condition.')}</p>
             </div>
-            {editingId && <Button type="button" variant="outline" onClick={resetForm}>{t('Cancel edit')}</Button>}
+            {editingId ? (
+              <Button type="button" variant="outline" className="w-full shrink-0 sm:w-auto" onClick={resetForm}>{t('Cancel edit')}</Button>
+            ) : (
+              <Button
+                type="button"
+                variant={isFormOpen ? 'outline' : 'default'}
+                className="w-full shrink-0 sm:w-auto"
+                aria-expanded={isFormOpen}
+                aria-controls="reward-form-panel"
+                onClick={() => {
+                  setIsFormOpen(!isFormOpen);
+                  setError('');
+                  if (!isFormOpen) setNotice('');
+                }}
+              >
+                {isFormOpen ? <><ChevronUp size={16} className="mr-2" />{t('Hide form')}</> : <><Plus size={16} className="mr-2" />{t('New reward')}</>}
+              </Button>
+            )}
           </div>
 
-          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSave}>
+          {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
+          {notice && <p role="status" className="mb-4 text-sm text-emerald-700">{notice}</p>}
+
+          <form id="reward-form-panel" className={isFormOpen ? 'grid gap-4 md:grid-cols-2' : 'hidden'} onSubmit={handleSave}>
             <div className="space-y-2">
               <Label htmlFor="reward-name">{t('Reward name')}</Label>
               <Input id="reward-name" maxLength={100} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} required />
@@ -233,12 +256,10 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
               <input type="checkbox" className="h-4 w-4 accent-primary" checked={form.isActive} onChange={event => setForm(current => ({ ...current, isActive: event.target.checked }))} />
               {t('Show this reward to eligible customers')}
             </label>
-            <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-              <Button type="submit" disabled={saving}>{saving ? t('Saving...') : t(editingId ? 'Save changes' : 'Create reward')}</Button>
+            <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:items-center">
+              <Button type="submit" className="w-full sm:w-auto" disabled={saving}>{saving ? t('Saving...') : t(editingId ? 'Save changes' : 'Create reward')}</Button>
               {!editingId && <span className="text-xs text-muted-foreground"><Gift size={14} className="mr-1 inline" />{t('Customers claim rewards from their public card.')}</span>}
             </div>
-            {error && <p role="alert" className="text-sm text-destructive md:col-span-2">{error}</p>}
-            {notice && <p role="status" className="text-sm text-emerald-700 md:col-span-2">{notice}</p>}
           </form>
         </section>
 
@@ -256,19 +277,19 @@ export const RewardsCatalogPage: React.FC<RewardsCatalogPageProps> = ({ campaign
             <div className="grid gap-4 xl:grid-cols-2">
               {rewards.map(reward => (
                 <article key={reward.id} className="rounded-2xl border border-border/80 bg-white p-5 shadow-subtle">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{reward.name}</h3>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="break-words font-semibold">{reward.name}</h3>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reward.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
                           {reward.isActive ? t('Active') : t('Paused')}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">{reward.description}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button type="button" size="sm" variant="outline" onClick={() => startEditing(reward)}><Pencil size={14} className="mr-1.5" />{t('Edit')}</Button>
-                      <Button type="button" size="sm" variant={reward.isActive ? 'ghost' : 'secondary'} onClick={() => void toggleActive(reward)}>{t(reward.isActive ? 'Pause' : 'Activate')}</Button>
+                    <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+                      <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => startEditing(reward)}><Pencil size={14} className="mr-1.5" />{t('Edit')}</Button>
+                      <Button type="button" size="sm" variant={reward.isActive ? 'ghost' : 'secondary'} className="w-full sm:w-auto" onClick={() => void toggleActive(reward)}>{t(reward.isActive ? 'Pause' : 'Activate')}</Button>
                     </div>
                   </div>
                   <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">

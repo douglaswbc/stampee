@@ -134,7 +134,7 @@ export interface LoyaltyPointLevel {
   benefit: string;
 }
 
-export type LoyaltyPointEntryType = 'visit' | 'visit_reversal' | 'manual_adjustment' | 'reward_redemption' | 'reward_refund';
+export type LoyaltyPointEntryType = 'visit' | 'visit_reversal' | 'manual_adjustment' | 'reward_redemption' | 'reward_refund' | 'welcome_bonus' | 'referral_reward';
 
 export interface LoyaltyPointHistoryEntry {
   entryType: LoyaltyPointEntryType;

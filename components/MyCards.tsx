@@ -256,7 +256,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
           <Button onClick={handleCreateNew} size="lg" className="rounded-full text-lg px-8 h-14">Create your first campaign</Button>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-10 pb-12 px-2 md:px-4">
+        <div className="grid grid-cols-1 gap-6 pb-12 px-0 sm:grid-cols-[repeat(auto-fill,minmax(320px,1fr))] sm:px-2 md:gap-10 md:px-4">
           {cards.map((card) => (
             <ResponsiveCardItem 
                 key={card.id} 

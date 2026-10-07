@@ -854,7 +854,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 <DropdownMenuContent
                                     align="start"
                                     sideOffset={6}
-                                    className="w-[--radix-dropdown-menu-trigger-width] min-w-[280px] max-h-[18rem] overflow-y-auto rounded-lg border border-[#a8b0c3] bg-[#c8ceda] p-1.5 text-[#434b67] shadow-xl"
+                                    className="w-[--radix-dropdown-menu-trigger-width] min-w-[min(280px,calc(100vw_-_2rem))] max-w-[calc(100vw_-_2rem)] max-h-[18rem] overflow-y-auto rounded-lg border border-[#a8b0c3] bg-[#c8ceda] p-1.5 text-[#434b67] shadow-xl"
                                 >
                                     <p className="px-2 pb-1 pt-0.5 text-xs font-semibold tracking-wide text-[#68718d]">
                                         Built-in Themes

@@ -153,7 +153,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     return (
         <LocalizedTree>
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="w-[calc(100vw-1rem)] max-w-[500px] h-[min(650px,calc(100vh-1rem))] sm:h-[650px] flex flex-col p-0 gap-0 overflow-hidden transition-all">
+            <DialogContent className="w-[calc(100vw_-_2rem)] max-w-[500px] h-[min(650px,calc(100dvh_-_2rem))] sm:h-[650px] flex flex-col p-0 gap-0 overflow-hidden transition-all">
                 {/* Header */}
                 <div className="border-b bg-muted/20 p-4 sm:p-6">
                     <DialogTitle className="text-xl">
@@ -225,7 +225,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                                 {filteredCustomers.slice(0, 10).map(c => (
                                     <button key={c.id} onClick={() => handleSelectCustomer(c)} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors text-left">
                                         <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">{c.name.substring(0,2).toUpperCase()}</div>
-                                        <div className="flex-1 overflow-hidden"><p className="font-medium text-sm truncate">{c.name}</p><p className="text-xs text-muted-foreground truncate">{c.email}</p></div>
+                                    <div className="min-w-0 flex-1 overflow-hidden"><p className="font-medium text-sm truncate">{c.name}</p><p className="text-xs text-muted-foreground truncate">{c.email}</p></div>
                                     </button>
                                 ))}
                             </div>

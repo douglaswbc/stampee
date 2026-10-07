@@ -8,10 +8,14 @@ import {
   PlusCircle,
   ReceiptText,
   Sparkles,
+  Target,
+  TicketCheck,
   Users,
   Wallet,
 } from 'lucide-react';
-import { Customer, Template, Transaction } from '../types';
+import type { Customer, Template } from '../types';
+import { fetchOwnerDashboardSummary } from '../lib/db/dashboard';
+import type { DashboardActivityEvent, DashboardActivityType, DashboardSummary } from '../lib/db/dashboard';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -34,11 +38,6 @@ interface ChecklistStep {
   buttonLabel: string;
 }
 
-interface ActivityItem extends Transaction {
-  customerName: string;
-  campaignName: string;
-}
-
 interface DashboardDismissState {
   getStarted: boolean;
 }
@@ -48,7 +47,7 @@ const defaultDismissState: DashboardDismissState = {
   getStarted: false,
 };
 
-const formatAction = (type: Transaction['type'], t: (source: string) => string) => {
+const formatAction = (type: DashboardActivityType, t: (source: string) => string) => {
   switch (type) {
     case 'issued':
       return t('Card issued');
@@ -58,7 +57,19 @@ const formatAction = (type: Transaction['type'], t: (source: string) => string) 
       return t('Mission bonus stamps');
     case 'stamp_remove':
       return t('Stamp removed');
-    default:
+    case 'mission_completed':
+      return t('Mission completed');
+    case 'mission_reward_redeemed':
+      return t('Mission reward redeemed');
+    case 'reward_code_issued':
+      return t('Reward code issued');
+    case 'reward_code_redeemed':
+      return t('Reward code redeemed');
+    case 'welcome_bonus':
+      return t('Welcome bonus');
+    case 'referral_reward':
+      return t('Referral reward');
+    case 'stamp_add':
       return t('Stamp added');
   }
 };
@@ -75,31 +86,64 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, custome
   const { currentOwner } = useAuth();
   const { t, language } = useLocale();
   const cards = useMemo(() => customers.flatMap((customer) => customer.cards), [customers]);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
+  const [summaryUnavailable, setSummaryUnavailable] = useState(false);
   const [dismissedSections, setDismissedSections] = useState<DashboardDismissState>(defaultDismissState);
 
-  const recentActivity = useMemo<ActivityItem[]>(
+  const cardActivity = useMemo<DashboardActivityEvent[]>(
     () =>
       customers
         .flatMap((customer) =>
           customer.cards.flatMap((card) =>
             (card.history || []).map((transaction) => ({
-              ...transaction,
+              id: transaction.id,
+              type: transaction.type,
               customerName: customer.name,
-              campaignName: card.campaignName,
+              contextName: card.campaignName,
+              pointsDelta: null,
+              timestamp: transaction.timestamp,
             }))
           )
         )
         .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, 5),
+        .slice(0, 8),
     [customers]
   );
+  const recentActivity = dashboardSummary?.recentActivity ?? cardActivity;
+
+  useEffect(() => {
+    let isCurrent = true;
+    if (!currentOwner?.id) {
+      setDashboardSummary(null);
+      setSummaryUnavailable(false);
+      setSummaryLoading(false);
+      return () => { isCurrent = false; };
+    }
+
+    setDashboardSummary(null);
+    setSummaryUnavailable(false);
+    setSummaryLoading(true);
+    void fetchOwnerDashboardSummary()
+      .then(result => {
+        if (!isCurrent) return;
+        if (result.ok) setDashboardSummary(result.summary);
+        else setSummaryUnavailable(true);
+      })
+      .catch(() => {
+        if (isCurrent) setSummaryUnavailable(true);
+      })
+      .finally(() => {
+        if (isCurrent) setSummaryLoading(false);
+      });
+
+    return () => { isCurrent = false; };
+  }, [currentOwner?.id]);
 
   const activeCardCount = cards.filter((card) => card.status === 'Active').length;
   const redeemedCardCount = cards.filter((card) => card.status === 'Redeemed').length;
-  const hasStampActivity = recentActivity.some((transaction) => transaction.type === 'stamp_add') ||
-    customers.some((customer) =>
-      customer.cards.some((card) => (card.history || []).some((transaction) => transaction.type === 'stamp_add'))
-    );
+  const activeCampaignCount = campaigns.filter((campaign) => campaign.isEnabled !== false).length;
+  const hasStampActivity = cardActivity.some((transaction) => transaction.type === 'stamp_add');
 
   const steps: ChecklistStep[] = [
     {
@@ -133,8 +177,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, custome
   const statCards = [
     {
       label: t('Campaigns'),
-      value: campaigns.length,
-      detail: campaigns.length === 1 ? t('1 campaign live') : `${campaigns.length} ${t('campaigns live')}`,
+      value: activeCampaignCount,
+      detail: `${campaigns.length} ${t('total campaigns')}`,
       icon: CreditCard,
     },
     {
@@ -346,13 +390,102 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, custome
           ))}
         </section>
 
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-xl font-semibold">{t('Loyalty program snapshot')}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t('Quick status for missions, reward codes, points, and referrals.')}</p>
+          </div>
+
+          {summaryLoading && (
+            <Card className="rounded-[24px]">
+              <CardContent className="p-5 text-sm text-muted-foreground" role="status">{t('Loading...')}</CardContent>
+            </Card>
+          )}
+
+          {summaryUnavailable && (
+            <Card className="rounded-[24px] border-amber-200 bg-amber-50/70">
+              <CardContent className="p-5 text-sm text-amber-900" role="status">
+                {t('Dashboard loyalty summary is unavailable. Apply the dashboard summary database patch, then refresh this page.')}
+              </CardContent>
+            </Card>
+          )}
+
+          {dashboardSummary && (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <Card className="rounded-[24px]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg"><Target size={18} />{t('Missions')}</CardTitle>
+                  <CardDescription>{t('Active missions')}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-3xl font-bold tabular-nums">{dashboardSummary.activeMissionCount}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span>{dashboardSummary.missionParticipantCount} {t('participants')}</span>
+                    <span>{dashboardSummary.missionCompletionCount} {t('Completions')}</span>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Link to="/missions">{t('View missions')}</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[24px]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg"><TicketCheck size={18} />{t('Rewards & codes')}</CardTitle>
+                  <CardDescription>{t('Codes awaiting validation')}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-3xl font-bold tabular-nums">{dashboardSummary.pendingRewardCodeCount}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                    <span>{dashboardSummary.activeRewardCount} {t('active rewards')}</span>
+                    <span>{dashboardSummary.redeemedRewardCodeCount} {t('codes redeemed')}</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <Button asChild size="sm" className="w-full min-w-0 whitespace-normal text-center">
+                      <Link to="/reward-redemptions">{t('Manage reward codes')}</Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="w-full min-w-0 whitespace-normal text-center">
+                      <Link to="/rewards">{t('Reward catalog')}</Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[24px]">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg"><Wallet size={18} />{t('Points and referrals')}</CardTitle>
+                  <CardDescription>{t(dashboardSummary.pointsEnabled ? 'Points enabled' : 'Points disabled')}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1 text-sm">
+                    <p>{dashboardSummary.pointsPerVisit} {t('points per verified visit')}</p>
+                    <p>{dashboardSummary.welcomePoints} {t('welcome points per new customer')}</p>
+                    <p>{dashboardSummary.loyaltyLevelCount} {t('loyalty levels')}</p>
+                    {dashboardSummary.welcomePoints > 0 && (
+                      <p className="text-xs text-muted-foreground">{t('The referrer earns half after the friend’s first verified visit.')}</p>
+                    )}
+                  </div>
+                  <div className="border-t border-border/70 pt-3 text-sm text-muted-foreground">
+                    <p>{dashboardSummary.rewardedReferralCount} {t('referrals rewarded')} · {dashboardSummary.pendingReferralCount} {t('pending referrals')}</p>
+                    <p className="mt-1">{dashboardSummary.referralPointsAwarded} {t('referral points awarded')}</p>
+                    <p className="mt-1">{dashboardSummary.welcomeBonusCustomerCount} {t('customers received welcome points')} · {dashboardSummary.welcomePointsAwarded} {t('welcome points awarded')}</p>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="w-full sm:w-auto">
+                    <Link to="/settings?tab=loyalty">{t('Loyalty settings')}</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </section>
+
         <Card className="rounded-[28px]">
           <CardHeader className="border-b border-border/70 pb-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                   <CardTitle className="text-xl">{t('Recent activity')}</CardTitle>
                 <CardDescription className="mt-1">
-                  {t('Latest transactions across all issued cards.')}
+                  {t('Latest customer activity across cards, missions, rewards, and points.')}
                 </CardDescription>
               </div>
               <div className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
@@ -373,31 +506,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ campaigns, custome
               </div>
             ) : (
               <div className="space-y-3">
-                {recentActivity.map((transaction) => (
+                {recentActivity.map((activity) => (
                   <div
-                    key={transaction.id}
+                    key={`${activity.type}:${activity.id}`}
                     className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-background/70 p-4 md:flex-row md:items-center md:justify-between"
                   >
                     <div className="flex items-start gap-3">
                       <div className="rounded-2xl bg-muted p-3 text-foreground">
-                        {transaction.type === 'redeem' ? (
+                        {activity.type.startsWith('reward_code_') || activity.type === 'redeem' || activity.type === 'mission_reward_redeemed' ? (
                           <Gift size={18} />
-                        ) : transaction.type === 'issued' ? (
+                        ) : activity.type.startsWith('mission_') ? (
+                          <Target size={18} />
+                        ) : activity.type === 'issued' || activity.type === 'welcome_bonus' || activity.type === 'referral_reward' ? (
                           <Wallet size={18} />
                         ) : (
                           <PlusCircle size={18} />
                         )}
                       </div>
-                      <div>
-                        <p className="font-semibold text-foreground">{formatAction(transaction.type, t)}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-foreground">{formatAction(activity.type, t)}</p>
                         <p className="text-sm text-muted-foreground">
-                          {transaction.customerName} {t(' on ')} {transaction.campaignName}
+                          {activity.customerName}
+                          {activity.contextName && <> · {activity.contextName}</>}
                         </p>
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground md:text-right">
-                      <div>{formatTimestamp(transaction.timestamp, language)}</div>
-                      <div className="text-xs uppercase tracking-[0.14em]">{transaction.actorRole ?? 'owner'}</div>
+                      <div>{formatTimestamp(activity.timestamp, language)}</div>
+                      {activity.pointsDelta !== null && (
+                        <div className="text-xs font-medium text-emerald-700">+{activity.pointsDelta} {t('points')}</div>
+                      )}
                     </div>
                   </div>
                 ))}

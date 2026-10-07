@@ -64,7 +64,7 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
         </DialogHeader>
 
         {currentUsage && (
-          <div className={`mt-2 grid gap-3 ${currentUsage.staff !== undefined ? "grid-cols-3" : "grid-cols-2"}`}>
+          <div className={`mt-2 grid gap-3 ${currentUsage.staff !== undefined ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2"}`}>
             <div className="rounded-xl border bg-muted/30 p-3 text-center">
               <div className="text-2xl font-bold">
                 {currentUsage.campaigns}

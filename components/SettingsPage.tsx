@@ -6,18 +6,25 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useAuth } from "./AuthProvider";
 import { buildStaffPortalUrl } from "../lib/links";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
 import { useLocale } from "./LocaleProvider";
 import { BUSINESS_CURRENCIES, formatCurrency, INTERFACE_LANGUAGES } from "../lib/i18n";
 import { updateCompanyLocalePreferences } from "../lib/db/profiles";
 import { resetOwnerBusinessData } from "../lib/db/dataManagement";
+import { APP_ORIGIN } from "../lib/siteConfig";
 import { LocalizedTree } from "./LocalizedTree";
 import { LoyaltyPointsSettings } from "./LoyaltyPointsSettings";
 
 const DELETE_CONFIRMATION = "DELETE";
 
 export const SettingsPage: React.FC = () => {
+  const publicUrlHost = typeof window !== "undefined" ? window.location.host : new URL(APP_ORIGIN).host;
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"company" | "loyalty" | "team" | "account">(
+    initialTab === "loyalty" || initialTab === "team" || initialTab === "account" ? initialTab : "company"
+  );
   const navigate = useNavigate();
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword, refreshProfile } = useAuth();
   const { language, currency, t, setPreferredLanguage } = useLocale();
@@ -232,14 +239,61 @@ export const SettingsPage: React.FC = () => {
     setDeleteStaffTarget(null);
   };
 
+  const settingsTabs = [
+    { id: "company", label: t("Company") },
+    { id: "loyalty", label: t("Loyalty program") },
+    { id: "team", label: t("Team") },
+    { id: "account", label: t("Account & security") },
+  ] as const;
+
+  const handleSettingsTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
+    let nextIndex: number | null = null;
+    if (event.key === "ArrowRight") nextIndex = (currentIndex + 1) % settingsTabs.length;
+    if (event.key === "ArrowLeft") nextIndex = (currentIndex - 1 + settingsTabs.length) % settingsTabs.length;
+    if (event.key === "Home") nextIndex = 0;
+    if (event.key === "End") nextIndex = settingsTabs.length - 1;
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    const nextTab = settingsTabs[nextIndex];
+    setActiveSettingsTab(nextTab.id);
+    requestAnimationFrame(() => document.getElementById(`settings-tab-${nextTab.id}`)?.focus());
+  };
+
   return (
     <LocalizedTree>
-    <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in h-full overflow-y-auto flex flex-col bg-gray-50/50">
+    <div className="p-3 sm:p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in h-full overflow-y-auto flex flex-col bg-gray-50/50">
       <div className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">{t("Settings")}</h1>
         <p className="text-sm text-muted-foreground">{t("Manage your profile, password, team, and account.")}</p>
       </div>
 
+      <div className="space-y-5">
+        <div role="tablist" aria-label={t("Settings sections")} className="grid w-full grid-cols-2 gap-1.5 rounded-xl border bg-white p-1.5 sm:grid-cols-4">
+          {settingsTabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              id={`settings-tab-${tab.id}`}
+              type="button"
+              role="tab"
+              aria-selected={activeSettingsTab === tab.id}
+              aria-controls={`settings-panel-${tab.id}`}
+              tabIndex={activeSettingsTab === tab.id ? 0 : -1}
+              onClick={() => setActiveSettingsTab(tab.id)}
+              onKeyDown={(event) => handleSettingsTabKeyDown(event, index)}
+              className={`min-h-11 min-w-0 w-full rounded-lg px-2 py-2.5 text-center text-sm leading-tight font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:px-3 ${
+                activeSettingsTab === tab.id
+                  ? "bg-foreground text-background shadow-sm"
+                  : "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-5">
+          <div id="settings-panel-company" role="tabpanel" aria-labelledby="settings-tab-company" tabIndex={0} hidden={activeSettingsTab !== "company"} className="space-y-5">
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
         <div>
           <h2 className="text-lg md:text-xl font-semibold">{t("Company preferences")}</h2>
@@ -263,14 +317,12 @@ export const SettingsPage: React.FC = () => {
           {preferencesError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{preferencesError}</p>}
           {preferencesMessage && <p role="status" className="text-sm text-emerald-700 sm:col-span-2">{t(preferencesMessage)}</p>}
           <div className="sm:col-span-2">
-            <Button type="submit" disabled={preferencesBusy || currentUser?.role !== "owner"}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={preferencesBusy || currentUser?.role !== "owner"}>
               <span>{preferencesBusy ? t("Saving...") : t("Save preferences")}</span>
             </Button>
           </div>
         </form>
       </section>
-
-      <LoyaltyPointsSettings />
 
       {/* Edit Profile */}
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
@@ -303,11 +355,11 @@ export const SettingsPage: React.FC = () => {
               <div className="space-y-1.5">
                 <Label>Public URL Slug</Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground shrink-0">stampee.co/</span>
+                  <span className="text-sm text-muted-foreground shrink-0">{publicUrlHost}/</span>
                   <Input
                     value={profileForm.slug}
                     readOnly
-                    className="bg-muted/40 text-muted-foreground cursor-not-allowed"
+                    className="min-w-0 bg-muted/40 text-muted-foreground cursor-not-allowed"
                   />
                 </div>
                 <p className="text-[11px] text-muted-foreground">Your public URL cannot be changed after signup.</p>
@@ -325,60 +377,20 @@ export const SettingsPage: React.FC = () => {
             </div>
           )}
           <div>
-            <Button type="submit" className="rounded-full px-6" disabled={profileBusy}>
+            <Button type="submit" className="w-full rounded-full px-6 sm:w-auto" disabled={profileBusy}>
               {profileBusy ? "Saving..." : "Save Profile"}
             </Button>
           </div>
         </form>
       </section>
 
-      {/* Change Password */}
-      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
-        <div>
-          <h2 className="text-lg md:text-xl font-semibold">Change Password</h2>
-          <p className="text-sm text-muted-foreground">Update your account password. Must be at least 6 characters.</p>
-        </div>
-        <form className="space-y-4" onSubmit={handlePasswordSave}>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>New Password</Label>
-              <Input
-                type="password"
-                value={passwordForm.next}
-                onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Confirm New Password</Label>
-              <Input
-                type="password"
-                value={passwordForm.confirm}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
-                placeholder="••••••••"
-                required
-              />
-            </div>
           </div>
-          {passwordError && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-              {passwordError}
-            </div>
-          )}
-          {passwordSuccess && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {passwordSuccess}
-            </div>
-          )}
-          <div>
-            <Button type="submit" className="rounded-full px-6" disabled={passwordBusy}>
-              {passwordBusy ? "Changing..." : "Change Password"}
-            </Button>
-          </div>
-        </form>
-      </section>
 
+          <div id="settings-panel-loyalty" role="tabpanel" aria-labelledby="settings-tab-loyalty" tabIndex={0} hidden={activeSettingsTab !== "loyalty"} className="space-y-5">
+            <LoyaltyPointsSettings />
+          </div>
+
+          <div id="settings-panel-team" role="tabpanel" aria-labelledby="settings-tab-team" tabIndex={0} hidden={activeSettingsTab !== "team"} className="space-y-5">
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -465,8 +477,8 @@ export const SettingsPage: React.FC = () => {
         )}
 
         {/* Staff table — desktop */}
-        <div className="hidden md:block rounded-2xl border border-slate-100 overflow-hidden">
-          <div className="grid grid-cols-[1.2fr_1.4fr_0.8fr_auto] gap-4 px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground bg-slate-50">
+        <div className="hidden xl:block rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto] gap-4 px-4 py-3 text-xs uppercase tracking-wider text-muted-foreground bg-slate-50">
             <span>Name</span>
             <span>Email</span>
             <span>Status</span>
@@ -480,10 +492,10 @@ export const SettingsPage: React.FC = () => {
             staffAccounts.map((staff) => (
               <div
                 key={staff.id}
-                className="grid grid-cols-[1.2fr_1.4fr_0.8fr_auto] gap-4 px-4 py-4 border-t items-center"
+                className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,0.8fr)_auto] gap-4 px-4 py-4 border-t items-center"
               >
-                <div className="font-medium text-foreground truncate">{staff.businessName}</div>
-                <div className="text-sm text-muted-foreground truncate">{staff.email}</div>
+                <div className="min-w-0 font-medium text-foreground truncate">{staff.businessName}</div>
+                <div className="min-w-0 text-sm text-muted-foreground truncate">{staff.email}</div>
                 <div>
                   <Badge
                     variant={staff.access === "active" ? "secondary" : "destructive"}
@@ -533,7 +545,7 @@ export const SettingsPage: React.FC = () => {
         </div>
 
         {/* Staff list — mobile cards */}
-        <div className="md:hidden space-y-3">
+        <div className="xl:hidden space-y-3">
           {staffAccounts.length === 0 ? (
             <div className="rounded-2xl border border-slate-100 px-4 py-6 text-sm text-muted-foreground">
               No staff yet. Add your first teammate above.
@@ -546,8 +558,8 @@ export const SettingsPage: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="font-medium text-foreground truncate">{staff.businessName}</div>
-                    <div className="text-sm text-muted-foreground truncate">{staff.email}</div>
+                    <div className="font-medium text-foreground break-words">{staff.businessName}</div>
+                    <div className="text-sm text-muted-foreground break-words">{staff.email}</div>
                   </div>
                   <Badge
                     variant={staff.access === "active" ? "secondary" : "destructive"}
@@ -556,11 +568,11 @@ export const SettingsPage: React.FC = () => {
                     {staff.access}
                   </Badge>
                 </div>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="min-w-0"
                     disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setResetTarget({ id: staff.id, name: staff.businessName });
@@ -573,7 +585,7 @@ export const SettingsPage: React.FC = () => {
                   <Button
                     variant={staff.access === "active" ? "destructive" : "default"}
                     size="sm"
-                    className="flex-1"
+                    className="min-w-0"
                     disabled={staffActionBusyId === staff.id}
                     onClick={() =>
                       handleSetStaffAccess(staff.id, staff.access === "active" ? "disabled" : "active")
@@ -584,7 +596,7 @@ export const SettingsPage: React.FC = () => {
                   <Button
                     variant="destructive"
                     size="sm"
-                    className="flex-1"
+                    className="col-span-2 w-full"
                     disabled={staffActionBusyId === staff.id}
                     onClick={() => {
                       setDeleteStaffTarget({ id: staff.id, name: staff.businessName });
@@ -599,6 +611,54 @@ export const SettingsPage: React.FC = () => {
           )}
         </div>
       </section>
+          </div>
+
+          <div id="settings-panel-account" role="tabpanel" aria-labelledby="settings-tab-account" tabIndex={0} hidden={activeSettingsTab !== "account"} className="space-y-5">
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold">Change Password</h2>
+          <p className="text-sm text-muted-foreground">Update your account password. Must be at least 6 characters.</p>
+        </div>
+        <form className="space-y-4" onSubmit={handlePasswordSave}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label>New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.next}
+                onChange={(e) => setPasswordForm({ ...passwordForm, next: e.target.value })}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Confirm New Password</Label>
+              <Input
+                type="password"
+                value={passwordForm.confirm}
+                onChange={(e) => setPasswordForm({ ...passwordForm, confirm: e.target.value })}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+          </div>
+          {passwordError && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {passwordError}
+            </div>
+          )}
+          {passwordSuccess && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {passwordSuccess}
+            </div>
+          )}
+          <div>
+            <Button type="submit" className="w-full rounded-full px-6 sm:w-auto" disabled={passwordBusy}>
+              {passwordBusy ? "Changing..." : "Change Password"}
+            </Button>
+          </div>
+        </form>
+      </section>
 
       {currentUser?.role === "owner" && (
         <section className="rounded-2xl md:rounded-3xl border border-amber-200 bg-amber-50 p-4 md:p-6 shadow-xs space-y-4">
@@ -612,6 +672,7 @@ export const SettingsPage: React.FC = () => {
           <Button
             type="button"
             variant="destructive"
+            className="w-full sm:w-auto"
             onClick={() => {
               setResetBusinessError("");
               setResetBusinessConfirmText("");
@@ -637,6 +698,7 @@ export const SettingsPage: React.FC = () => {
           <Button
             type="button"
             variant="destructive"
+            className="w-full sm:w-auto"
             onClick={() => {
               setDeleteError("");
               setDeleteConfirmText("");
@@ -647,6 +709,9 @@ export const SettingsPage: React.FC = () => {
           </Button>
         </div>
       </section>
+          </div>
+        </div>
+      </div>
 
       <Dialog open={!!resetTarget} onOpenChange={(open) => !open && !resetBusy && setResetTarget(null)}>
         <DialogContent>

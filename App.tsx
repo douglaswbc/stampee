@@ -18,7 +18,8 @@ import { parseCustomerLoyaltyPoints } from './lib/db/loyaltyPoints';
 import { PublicLoyaltyPoints } from './components/PublicLoyaltyPoints';
 import { PublicLoyaltyRewards } from './components/PublicLoyaltyRewards';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
-import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
+import { buildCampaignSignupUrl, buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
+import { fetchPublicReferralCode } from './lib/db/publicSignup';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
 import { useSubscription } from './lib/useSubscription';
 import { SubscriptionProvider } from './components/SubscriptionContext';
@@ -184,6 +185,7 @@ const PublicCardWrapper: React.FC = () => {
     template: Template;
     missions: LoyaltyMission[];
     loyaltyPoints: CustomerLoyaltyPoints | null;
+    referralCode: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -196,6 +198,7 @@ const PublicCardWrapper: React.FC = () => {
       if (error || !data) { setLoading(false); return; }
 
       let loyaltyPointsData: unknown = null;
+      let referralCode: string | null = null;
       try {
         const { data, error: pointsError } = await supabase.rpc('get_public_loyalty_points', {
           slug_input: slug,
@@ -204,6 +207,11 @@ const PublicCardWrapper: React.FC = () => {
         if (!pointsError) loyaltyPointsData = data;
       } catch {
         // An unavailable points summary must not block the public card.
+      }
+      try {
+        referralCode = await fetchPublicReferralCode(slug, uniqueId);
+      } catch {
+        // An unavailable referral link must not block the public card.
       }
 
       const card: IssuedCard = {
@@ -256,6 +264,7 @@ const PublicCardWrapper: React.FC = () => {
         template,
         missions: Array.isArray(data.missions) ? data.missions as LoyaltyMission[] : [],
         loyaltyPoints: parseCustomerLoyaltyPoints(loyaltyPointsData),
+        referralCode,
       });
       setLoading(false);
     })();
@@ -277,7 +286,10 @@ const PublicCardWrapper: React.FC = () => {
     );
   }
 
-  const { card, customer, template, missions, loyaltyPoints } = cardData;
+  const { card, customer, template, missions, loyaltyPoints, referralCode } = cardData;
+  const referralUrl = slug && referralCode
+    ? buildCampaignSignupUrl(slug, card.campaignId || template.id, referralCode)
+    : null;
   const refreshLoyaltyPoints = async () => {
     try {
       const { data: refreshedPoints, error: pointsError } = await supabase.rpc('get_public_loyalty_points', {
@@ -346,7 +358,7 @@ const PublicCardWrapper: React.FC = () => {
           </div>
         )}
       </div>
-      <PublicLoyaltyPoints summary={loyaltyPoints} />
+      <PublicLoyaltyPoints summary={loyaltyPoints} referralUrl={referralUrl} />
       <PublicLoyaltyRewards slug={slug ?? ''} cardUniqueId={card.uniqueId} onPointsRefresh={refreshLoyaltyPoints} />
       {withSuspense(<MissionProgressList missions={missions} />)}
     </div>
@@ -532,7 +544,7 @@ const DashboardLayout: React.FC = () => {
       <Sidebar
         onScanQr={() => window.dispatchEvent(new Event('open-qr-scan'))}
       />
-      <main className="relative flex min-h-screen flex-1 flex-col overflow-visible md:h-screen md:overflow-hidden">
+      <main className="relative flex min-h-screen min-w-0 flex-1 flex-col overflow-visible md:h-screen md:overflow-hidden">
         <div className="md:hidden sticky top-0 z-40 flex items-center justify-between border-b border-border/80 bg-card/95 px-4 py-3 backdrop-blur-sm">
           <button
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border/80 bg-background shadow-subtle"
@@ -543,7 +555,7 @@ const DashboardLayout: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="text-sm font-semibold">{activeTitle}</div>
+          <div className="min-w-0 flex-1 truncate px-2 text-center text-sm font-semibold">{activeTitle}</div>
           <div className="h-10 w-10" />
         </div>
 
@@ -556,7 +568,7 @@ const DashboardLayout: React.FC = () => {
             onClick={() => setIsMobileNavOpen(false)}
           />
           <div className={cn(
-            "absolute left-0 top-0 h-full w-72 border-r border-border/80 bg-card shadow-panel transition-transform duration-200",
+            "absolute left-0 top-0 h-full w-[min(18rem,100vw)] border-r border-border/80 bg-card shadow-panel transition-transform duration-200",
             isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           )}>
             <div className="flex items-center justify-between px-4 py-4 border-b">
@@ -582,10 +594,10 @@ const DashboardLayout: React.FC = () => {
         </div>
 
         <VerifyBanner />
-        <div className="flex-1 overflow-visible md:overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-visible md:overflow-hidden">
           <div
             key={location.pathname}
-            className="dashboard-route-transition min-h-full md:h-full"
+            className="dashboard-route-transition min-h-full min-w-0 md:h-full"
           >
             <Outlet />
           </div>

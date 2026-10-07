@@ -85,7 +85,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
 
   return (
     <LocalizedTree>
-    <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
+    <div className="min-h-full min-w-0 space-y-6 p-4 animate-fade-in bg-gray-50/50 md:h-full md:overflow-y-auto md:p-8">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Customers</h1>
@@ -114,7 +114,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </div>
       )}
 
-      <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-xs">
+      <div className="hidden rounded-xl border bg-white flex-1 overflow-auto shadow-xs xl:block">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/30">
@@ -165,6 +165,44 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="space-y-3 xl:hidden">
+        {filteredCustomers.length === 0 ? (
+          <div className="rounded-xl border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+            No customers found.
+          </div>
+        ) : filteredCustomers.map(customer => (
+          <article key={customer.id} className="rounded-xl border bg-white p-4 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                  {customer.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="break-words font-medium">{customer.name}</p>
+                  <p className="break-all text-sm text-muted-foreground">{customer.email}</p>
+                  {customer.mobile && <p className="mt-1 flex items-center gap-1.5 break-all text-xs text-muted-foreground"><Phone size={12} />{customer.mobile}</p>}
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-800" title="Active cards">
+                <span className="font-semibold">{customer.cards.length}</span>
+                <span className="ml-1">Active Cards</span>
+              </span>
+            </div>
+            {!readOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 w-full gap-2"
+                onClick={() => { setEditingCustomer(customer); setFormData({ name: customer.name, email: customer.email, mobile: customer.mobile || '' }) }}
+              >
+                <Edit size={15} /> Edit
+              </Button>
+            )}
+          </article>
+        ))}
       </div>
 
       <Dialog open={!readOnly && !!editingCustomer} onOpenChange={(o) => !o && !busy && setEditingCustomer(null)}>

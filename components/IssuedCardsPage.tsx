@@ -470,7 +470,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           </div>
         ) : (
           <>
-            <div className="space-y-3 p-3 md:hidden">
+            <div className="space-y-3 p-3 xl:hidden">
               {cardRows.map(({ customer, card, campaign, progress, canRedeem, isRedeemed, isArchivedCampaign }) => (
                 <div
                   key={card.id}
@@ -568,7 +568,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
               ))}
             </div>
 
-            <div className="hidden overflow-auto md:block">
+            <div className="hidden overflow-auto xl:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30">

@@ -143,7 +143,7 @@ export const RewardRedemptionsPage: React.FC = () => {
         </div>
 
         <div className="grid gap-4 xl:grid-cols-2">
-          <section className="space-y-4 rounded-2xl border border-border/80 bg-white p-5 shadow-subtle md:p-6">
+          <section className="space-y-4 rounded-2xl border border-border/80 bg-white p-4 shadow-subtle sm:p-5 md:p-6">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><ScanLine size={19} /></div>
               <div>
@@ -156,19 +156,19 @@ export const RewardRedemptionsPage: React.FC = () => {
                 <Label htmlFor="reward-code">{t('Redemption code')}</Label>
                 <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <Input id="reward-code" autoComplete="off" className="font-mono uppercase" maxLength={40} value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="SF-XXXXXXXXXXXXXXX" required />
-                  <Button type="button" variant="outline" className="gap-2 rounded-full" onClick={() => setIsScanOpen(true)} disabled={validating}>
+                  <Button type="button" variant="outline" className="w-full gap-2 rounded-full sm:w-auto" onClick={() => setIsScanOpen(true)} disabled={validating}>
                     <QrCode size={16} />{t('Scan QR')}
                   </Button>
                 </div>
               </div>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
-              <Button type="submit" disabled={validating || !code.trim()}><BadgeCheck size={16} className="mr-2" />{validating ? t('Checking...') : t('Validate and deliver')}</Button>
+              <Button type="submit" className="w-full sm:w-auto" disabled={validating || !code.trim()}><BadgeCheck size={16} className="mr-2" />{validating ? t('Checking...') : t('Validate and deliver')}</Button>
             </form>
           </section>
 
           {isOwner && (
-            <section className="space-y-4 rounded-2xl border border-border/80 bg-white p-5 shadow-subtle md:p-6">
+            <section className="space-y-4 rounded-2xl border border-border/80 bg-white p-4 shadow-subtle sm:p-5 md:p-6">
               <div className="flex items-start gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-700"><TicketCheck size={19} /></div>
                 <div>
@@ -186,24 +186,24 @@ export const RewardRedemptionsPage: React.FC = () => {
                   <Input id="cancel-reason" minLength={3} maxLength={250} value={cancelReason} onChange={event => setCancelReason(event.target.value)} required />
                 </div>
                 {cancelError && <p role="alert" className="text-sm text-destructive">{cancelError}</p>}
-                <Button type="submit" variant="outline" disabled={cancelling || !cancelCode.trim()}>{cancelling ? t('Cancelling...') : t('Cancel code')}</Button>
+                <Button type="submit" variant="outline" className="w-full sm:w-auto" disabled={cancelling || !cancelCode.trim()}>{cancelling ? t('Cancelling...') : t('Cancel code')}</Button>
               </form>
             </section>
           )}
         </div>
 
         <section className="space-y-4">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
             <div>
               <h2 className="text-xl font-semibold">{t('Recent reward codes')}</h2>
               <p className="text-sm text-muted-foreground">{t('The latest 100 claims for this business.')}</p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => void loadRedemptions()}>{t('Refresh')}</Button>
+            <Button type="button" size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => void loadRedemptions()}>{t('Refresh')}</Button>
           </div>
           {loading ? <p className="text-sm text-muted-foreground">{t('Loading...')}</p> : redemptions.length === 0 ? (
             <div className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">{t('No reward codes have been issued yet.')}</div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border bg-white">
+            <div className="hidden overflow-x-auto rounded-2xl border bg-white xl:block">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
@@ -231,6 +231,44 @@ export const RewardRedemptionsPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {!loading && redemptions.length > 0 && (
+            <div className="space-y-3 xl:hidden">
+              {redemptions.map(redemption => (
+                <article key={redemption.id} className="rounded-2xl border bg-white p-4 shadow-subtle">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words font-medium">{redemption.rewardName}</p>
+                      {redemption.customerName && <p className="mt-0.5 break-words text-xs text-muted-foreground">{redemption.customerName}</p>}
+                      {redemption.missionName && <p className="mt-1 break-words text-xs text-emerald-700">{t('Mission')}: {redemption.missionName}</p>}
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${redemption.status === 'redeemed' ? 'bg-emerald-50 text-emerald-700' : redemption.status === 'issued' ? 'bg-amber-50 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>
+                      {stateLabel(redemption.status)}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid min-w-0 grid-cols-2 gap-3 border-t pt-3 text-xs">
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground">{t('Code')}</p>
+                      <p className="mt-0.5 break-all font-mono font-medium">{redemption.code}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-muted-foreground">{t('Issued / expires')}</p>
+                      <p className="mt-0.5">{formatDate(redemption.issuedAt, language)}</p>
+                      <p className="text-muted-foreground">{t('Expires')}: {formatDate(redemption.expiresAt, language)}</p>
+                    </div>
+                    {(redemption.redeemedBy || redemption.redeemedAt) && (
+                      <div className="col-span-2 min-w-0">
+                        <p className="text-muted-foreground">{t('Validated by')}</p>
+                        <p className="mt-0.5 break-words">{redemption.redeemedBy || formatDate(redemption.redeemedAt!, language)}</p>
+                      </div>
+                    )}
+                    {redemption.cancellationReason && (
+                      <p className="col-span-2 break-words text-muted-foreground">{t('Reason')}: {redemption.cancellationReason}</p>
+                    )}
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </section>

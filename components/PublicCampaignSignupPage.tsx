@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { LocalizedTree } from './LocalizedTree';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useLocale } from './LocaleProvider';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
@@ -11,7 +12,10 @@ const SERVICE_UNAVAILABLE_MESSAGE = 'Service is temporarily unavailable. Please 
 
 export const PublicCampaignSignupPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useLocale();
   const { slug, campaignId } = useParams<{ slug: string; campaignId: string }>();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get('ref') ?? '';
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [preRedirectMessage, setPreRedirectMessage] = useState('');
@@ -42,6 +46,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
   }, [campaignId, slug]);
 
   const disabled = context?.campaign.isEnabled === false;
+  const bonusRequiresContact = !!context && context.pointsEnabled && context.welcomePoints > 0;
   const isShowingPreRedirectLoader = preRedirectMessage.length > 0;
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -57,6 +62,10 @@ export const PublicCampaignSignupPage: React.FC = () => {
       setError('Invalid signup link.');
       return;
     }
+    if ((bonusRequiresContact || referralCode) && !email.trim() && !mobile.trim()) {
+      setError('Add an email or mobile number to qualify for welcome or referral points.');
+      return;
+    }
 
     setSubmitting(true);
     const result = await registerPublicCampaignSignup({
@@ -65,6 +74,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
       name: trimmedName,
       email,
       mobile,
+      referralCode,
     });
 
     if (result.outcome === 'issued' || result.outcome === 'redirect_existing') {
@@ -129,7 +139,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
         </div>
       )}
       <div className="mx-auto w-full max-w-xl">
-        <section className="rounded-[2rem] border border-black/[0.08] bg-white p-6 shadow-[0_24px_64px_-38px_rgba(0,0,0,0.35)] sm:p-8">
+        <section className="rounded-[2rem] border border-black/[0.08] bg-white p-4 shadow-[0_24px_64px_-38px_rgba(0,0,0,0.35)] sm:p-8">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-[#6e6e73]">Loyalty Signup</p>
           <h1 className="mt-3 text-[clamp(1.9rem,5vw,2.7rem)] font-black leading-[0.96] tracking-[-0.03em] text-[#1d1d1f]">
             {context.owner.businessName}
@@ -137,6 +147,20 @@ export const PublicCampaignSignupPage: React.FC = () => {
           <p className="mt-3 text-[0.98rem] leading-7 text-[#4f5258]">
             Join <span className="font-semibold text-[#1d1d1f]">{context.campaign.name}</span> to start collecting stamps.
           </p>
+
+          {bonusRequiresContact && (
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+              <p>{t('New customers receive')} <strong>{context.welcomePoints}</strong> {t('welcome points once per business.')}</p>
+              <p className="mt-1">{t('Enter an email or mobile number to qualify for welcome or referral points.')}</p>
+              {referralCode && <p className="mt-1">{t('Your inviter earns half after your first verified visit, rounded down.')}</p>}
+            </div>
+          )}
+
+          {!bonusRequiresContact && referralCode && (
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+              <p>{t('Enter an email or mobile number to qualify for welcome or referral points.')}</p>
+            </div>
+          )}
 
           {disabled && (
             <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">

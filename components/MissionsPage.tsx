@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, Gift, Pause, Pencil, Play, Plus, RotateCcw, Target, Users } from 'lucide-react';
+import { CheckCircle2, Clock3, Gift, Pause, Pencil, Play, Plus, RotateCcw, Target, Users, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { LoyaltyMission, LoyaltyMissionType, LoyaltyReward, Template } from '../types';
 import { createMission, fetchOwnerMissions, MissionInput, setMissionActive, updateMission } from '../lib/db/missions';
@@ -84,6 +84,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const [catalogError, setCatalogError] = useState('');
   const [form, setForm] = useState<MissionForm>(() => emptyForm(campaigns[0]?.id ?? ''));
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -128,6 +129,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm(campaigns[0]?.id ?? ''));
+    setIsFormOpen(false);
     setError('');
     setNotice('');
   };
@@ -135,6 +137,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const handleEdit = (mission: LoyaltyMission) => {
     setEditingId(mission.id);
     setForm(missionToForm(mission));
+    setIsFormOpen(true);
     setError('');
     setNotice('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -211,6 +214,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
     setNotice(t(editingId ? 'Mission updated.' : 'Mission created.'));
     setEditingId(null);
     setForm(emptyForm(campaigns[0]?.id ?? ''));
+    setIsFormOpen(false);
     await loadMissions();
   };
 
@@ -246,15 +250,36 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
       </div>
 
       <section className="rounded-2xl border border-border/80 bg-card p-5 shadow-subtle md:p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold">{t(editingId ? 'Edit mission' : 'Create a mission')}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{t('Progress is recorded from verified stamps within the chosen period.')}</p>
           </div>
-          {editingId && <Button type="button" variant="outline" onClick={resetForm}>Cancel edit</Button>}
+          {editingId ? (
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={resetForm}>{t('Cancel edit')}</Button>
+          ) : (
+            <Button
+              type="button"
+              variant={isFormOpen ? 'outline' : 'default'}
+              className="w-full sm:w-auto"
+              aria-expanded={isFormOpen}
+              aria-controls="mission-form-panel"
+              onClick={() => {
+                setIsFormOpen(!isFormOpen);
+                setError('');
+                if (!isFormOpen) setNotice('');
+              }}
+            >
+              {isFormOpen ? <><ChevronUp size={16} className="mr-2" />{t('Hide form')}</> : <><Plus size={16} className="mr-2" />{t('New mission')}</>}
+            </Button>
+          )}
         </div>
 
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSave}>
+        {error && <p role="alert" className="mb-4 text-sm text-destructive">{error}</p>}
+        {notice && <p role="status" className="mb-4 text-sm text-emerald-700">{notice}</p>}
+        {campaigns.length === 0 && <p className="mb-4 text-sm text-amber-700">{t('Create a campaign before setting up a mission.')}</p>}
+
+        <form id="mission-form-panel" className={isFormOpen ? 'grid gap-4 md:grid-cols-2' : 'hidden'} onSubmit={handleSave}>
           <div className="space-y-2">
             <Label htmlFor="mission-name">{t('Mission name')}</Label>
             <Input id="mission-name" maxLength={100} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder={t('Three visits this week')} required />
@@ -326,10 +351,8 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
             <input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} className="h-4 w-4 accent-primary" />
             {t('Show this mission to customers')}
           </label>
-          {error && <p role="alert" className="text-sm text-destructive md:col-span-2">{error}</p>}
-          {notice && <p role="status" className="text-sm text-emerald-700 md:col-span-2">{notice}</p>}
-          <div className="flex flex-wrap gap-2 md:col-span-2">
-            <Button type="submit" disabled={saving || campaigns.length === 0 || (form.rewardType === 'catalog_reward' && !form.catalogRewardId)}>
+          <div className="flex flex-col gap-2 sm:flex-row md:col-span-2">
+            <Button type="submit" className="w-full sm:w-auto" disabled={saving || campaigns.length === 0 || (form.rewardType === 'catalog_reward' && !form.catalogRewardId)}>
               {saving ? (
               <span key="saving">{t('Saving…')}</span>
               ) : editingId ? (
@@ -342,7 +365,6 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
             </Button>
           </div>
         </form>
-        {campaigns.length === 0 && <p className="mt-4 text-sm text-amber-700">{t('Create a campaign before setting up a mission.')}</p>}
       </section>
 
       <section className="space-y-3">

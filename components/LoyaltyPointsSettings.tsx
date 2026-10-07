@@ -38,6 +38,7 @@ export const LoyaltyPointsSettings: React.FC = () => {
   const [configuration, setConfiguration] = useState<LoyaltyPointsConfiguration>({
     isEnabled: false,
     pointsPerVisit: 10,
+    welcomePoints: 0,
     levels: defaultLevels(language),
   });
   const [customers, setCustomers] = useState<LoyaltyPointsCustomer[]>([]);
@@ -96,6 +97,10 @@ export const LoyaltyPointsSettings: React.FC = () => {
     setNotice('');
     if (!Number.isInteger(configuration.pointsPerVisit) || configuration.pointsPerVisit < 1 || configuration.pointsPerVisit > 10000) {
       setError(t('Points per visit must be a whole number between 1 and 10,000.'));
+      return;
+    }
+    if (!Number.isInteger(configuration.welcomePoints) || (configuration.welcomePoints !== 0 && (configuration.welcomePoints < 2 || configuration.welcomePoints > 100000))) {
+      setError(t('Welcome points must be 0 or a whole number between 2 and 100,000.'));
       return;
     }
     if (!configuration.levels.length || configuration.levels.length > 10 || configuration.levels[0].minPoints !== 0) {
@@ -199,33 +204,39 @@ export const LoyaltyPointsSettings: React.FC = () => {
                 <Input id="points-per-visit" type="number" min={1} max={10000} step={1} value={configuration.pointsPerVisit} onChange={event => setConfiguration(current => ({ ...current, pointsPerVisit: Number(event.target.value) }))} required />
               </div>
 
+              <div className="max-w-sm space-y-1.5">
+                <Label htmlFor="welcome-points">{t('Welcome points for new customers')}</Label>
+                <Input id="welcome-points" type="number" min={0} max={100000} step={1} value={configuration.welcomePoints} onChange={event => setConfiguration(current => ({ ...current, welcomePoints: Number(event.target.value) }))} required />
+                <p className="text-xs text-muted-foreground">{t('Awarded once when a new customer joins this business while points are enabled. Set to 0 to disable, or choose at least 2 points. A referrer earns half after the friend’s first verified visit, rounded down.')}</p>
+              </div>
+
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="font-semibold">{t('Customer levels')}</h3>
                     <p className="text-xs text-muted-foreground">{t('Set the minimum point balance and benefit for each level.')}</p>
                   </div>
-                  <Button type="button" variant="outline" size="sm" disabled={configuration.levels.length >= 10} onClick={addLevel}>
+                  <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" disabled={configuration.levels.length >= 10} onClick={addLevel}>
                     <Plus size={15} className="mr-1.5" />{t('Add level')}
                   </Button>
                 </div>
 
                 <div className="space-y-3">
                   {configuration.levels.map((level, index) => (
-                    <div key={`${index}-${level.minPoints}`} className="grid gap-3 rounded-xl border p-4 sm:grid-cols-[1fr_140px_1.5fr_auto] sm:items-end">
-                      <div className="space-y-1.5">
+                    <div key={`${index}-${level.minPoints}`} className="grid gap-3 rounded-xl border p-4 md:grid-cols-[minmax(0,1fr)_140px_minmax(0,1.5fr)_auto] md:items-end">
+                      <div className="min-w-0 space-y-1.5">
                         <Label htmlFor={`loyalty-level-name-${index}`}>{t('Level name')}</Label>
                         <Input id={`loyalty-level-name-${index}`} maxLength={50} value={level.name} onChange={event => updateLevel(index, { name: event.target.value })} required />
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="min-w-0 space-y-1.5">
                         <Label htmlFor={`loyalty-level-points-${index}`}>{t('Minimum points')}</Label>
                         <Input id={`loyalty-level-points-${index}`} type="number" min={0} max={100000000} step={1} value={level.minPoints} disabled={index === 0} onChange={event => updateLevel(index, { minPoints: Number(event.target.value) })} required />
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="min-w-0 space-y-1.5">
                         <Label htmlFor={`loyalty-level-benefit-${index}`}>{t('Level benefit')}</Label>
                         <Input id={`loyalty-level-benefit-${index}`} maxLength={200} value={level.benefit} onChange={event => updateLevel(index, { benefit: event.target.value })} required />
                       </div>
-                      <Button type="button" variant="ghost" size="icon" aria-label={t('Remove level')} title={t('Remove level')} disabled={index === 0} onClick={() => setConfiguration(current => ({ ...current, levels: current.levels.filter((_, levelIndex) => levelIndex !== index) }))}>
+                      <Button type="button" variant="ghost" size="icon" className="justify-self-end md:justify-self-auto" aria-label={t('Remove level')} title={t('Remove level')} disabled={index === 0} onClick={() => setConfiguration(current => ({ ...current, levels: current.levels.filter((_, levelIndex) => levelIndex !== index) }))}>
                         <Trash2 size={16} />
                       </Button>
                     </div>
@@ -234,14 +245,14 @@ export const LoyaltyPointsSettings: React.FC = () => {
               </div>
 
               <div className="rounded-xl bg-muted/40 p-4 text-xs leading-5 text-muted-foreground">
-                <p>{t('Points are earned only for verified added stamps. Purchase points are unavailable because the current checkout flow does not record a trusted purchase amount.')}</p>
+                <p>{t('Points are earned for verified added stamps and configured welcome or referral bonuses. Purchase points are unavailable because the current checkout flow does not record a trusted purchase amount.')}</p>
                 <p className="mt-2">{t('Points do not expire. Removing a stamp reverses its matching points, up to the available balance. Badges remain once earned.')}</p>
                 <p className="mt-2">{t('Manual adjustments are owner-only, require a reason visible to the customer, and are kept in the ledger. Use an opposite adjustment to correct an earlier one.')}</p>
               </div>
 
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}
-              <Button type="submit" disabled={saving || loading}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={saving || loading}>
                 {saving ? t('Saving…') : t('Save loyalty settings')}
               </Button>
             </form>
@@ -274,7 +285,7 @@ export const LoyaltyPointsSettings: React.FC = () => {
             {adjustmentError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{adjustmentError}</p>}
             {adjustmentNotice && <p role="status" className="text-sm text-emerald-700 sm:col-span-2">{adjustmentNotice}</p>}
             <div className="sm:col-span-2">
-              <Button type="submit" disabled={adjusting || !customers.length}>
+              <Button type="submit" className="w-full sm:w-auto" disabled={adjusting || !customers.length}>
                 {adjusting ? t('Saving…') : t('Apply adjustment')}
               </Button>
             </div>

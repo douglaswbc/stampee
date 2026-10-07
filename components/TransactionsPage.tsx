@@ -167,7 +167,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
 
   return (
     <LocalizedTree>
-    <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
+    <div className="min-h-full min-w-0 space-y-6 bg-gray-50/50 p-3 animate-fade-in sm:p-4 md:h-full md:overflow-y-auto md:p-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Transactions</h1>
@@ -176,22 +176,22 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border shadow-xs">
-            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg border w-full max-w-md focus-within:ring-2 focus-within:ring-ring focus-within:bg-white transition-colors">
+        <div className="flex flex-col gap-3 rounded-xl border bg-white p-3 shadow-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 sm:p-4">
+            <div className="flex w-full min-w-0 items-center space-x-2 rounded-lg border bg-gray-50 px-3 py-2 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-ring sm:max-w-md sm:flex-1">
                 <Search className="text-gray-400" size={20} />
                 <Input 
-                    className="flex-1 border-none shadow-none focus-visible:ring-0 px-0 bg-transparent" 
+                    className="min-w-0 flex-1 border-none bg-transparent px-0 shadow-none focus-visible:ring-0"
                     placeholder="Search by name, card ID, or campaign..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
             </div>
             
-            <div className="flex items-center space-x-2 bg-gray-50 px-3 py-2 rounded-lg border w-full sm:w-auto focus-within:ring-2 focus-within:ring-ring focus-within:bg-white transition-colors">
+            <div className="flex w-full min-w-0 items-center space-x-2 rounded-lg border bg-gray-50 px-3 py-2 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-ring sm:w-auto">
                 <Calendar className="text-gray-400" size={20} />
                 <input 
                     type="date"
-                    className="bg-transparent text-sm outline-hidden text-gray-600"
+                    className="min-w-0 flex-1 bg-transparent text-sm text-gray-600 outline-hidden sm:flex-none"
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
                 />
@@ -202,18 +202,18 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                 )}
             </div>
 
-             <div className="ml-auto flex items-center gap-2">
+             <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row sm:flex-wrap">
                  <Button
                     variant="outline"
                     size="sm"
                     onClick={handleExportCsv}
-                    className="gap-2"
+                    className="w-full gap-2 sm:w-auto"
                     disabled={filteredTransactions.length === 0}
                  >
                     <Download size={16} />
                     Export CSV
                  </Button>
-                 <Button variant="ghost" size="sm" onClick={toggleSort} className="gap-2 text-muted-foreground">
+                 <Button variant="ghost" size="sm" onClick={toggleSort} className="w-full gap-2 text-muted-foreground sm:w-auto">
                     <ArrowUpDown size={16} />
                     {sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
                  </Button>
@@ -221,7 +221,48 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border bg-white flex-1 overflow-auto shadow-xs">
+        <div className="space-y-3 xl:hidden">
+            {filteredTransactions.length === 0 ? (
+                <div className="rounded-xl border bg-white px-4 py-8 text-center text-sm text-muted-foreground">
+                    <History size={24} className="mx-auto mb-2 opacity-20" />
+                    No transactions found matching your filters.
+                </div>
+            ) : visibleTransactions.map(tx => (
+                <article key={tx.id} className="rounded-xl border bg-white p-4 shadow-xs">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                            <p className="break-words font-medium text-foreground">{tx.customerName}</p>
+                            <p className="break-all text-xs text-muted-foreground">{tx.customerEmail}</p>
+                        </div>
+                        <div className={cn(
+                            "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
+                            getBadgeColor(tx.type)
+                        )}>
+                            {getIcon(tx.type)}{getLabel(tx.type)}
+                        </div>
+                    </div>
+                    <div className="mt-3 min-w-0 border-t pt-3">
+                        <p className="break-words text-sm font-medium">{tx.campaignName}</p>
+                        <p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">#{tx.cardId.slice(0, 8)}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-sm">
+                        <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Date &amp; Time</p>
+                            <p className="text-xs">{new Date(tx.timestamp).toLocaleDateString(language, { dateStyle: 'medium' })}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(tx.timestamp).toLocaleTimeString(language, { hour: 'numeric', minute: '2-digit' })}</p>
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">By</p>
+                            <p className="break-words text-xs font-medium">{tx.actorName || "Owner"}</p>
+                            <p className="text-xs text-muted-foreground">{tx.actorRole === "staff" ? "Staff" : "Owner"}</p>
+                        </div>
+                    </div>
+                    {tx.remarks && <p className="mt-3 break-words border-t pt-3 text-xs text-muted-foreground">{tx.remarks}</p>}
+                </article>
+            ))}
+        </div>
+
+        <div className="hidden flex-1 overflow-auto rounded-xl border bg-white shadow-xs xl:block">
             <Table>
                 <TableHeader>
                     <TableRow className="bg-muted/30">

@@ -321,7 +321,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
 
   return (
     <LocalizedTree>
-    <div className="h-full overflow-y-auto flex flex-col space-y-8 bg-background p-6 md:p-8 animate-fade-in">
+    <div className="h-full min-w-0 overflow-y-auto flex flex-col space-y-6 bg-background p-4 sm:p-6 md:space-y-8 md:p-8 animate-fade-in">
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
           <h1 className="text-2xl md:text-4xl font-semibold tracking-tight text-foreground">Analytics</h1>
@@ -338,7 +338,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">From</label>
             <Input
               type="date"
-              className="h-10 w-[160px]"
+              className="h-10 w-full sm:w-[160px]"
               value={startDate}
               onChange={(event) => {
                 const value = event.target.value;
@@ -351,7 +351,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">To</label>
             <Input
               type="date"
-              className="h-10 w-[160px]"
+              className="h-10 w-full sm:w-[160px]"
               value={endDate}
               onChange={(event) => {
                 const value = event.target.value;
@@ -560,7 +560,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
                       {campaign.issued} issued | {campaign.active} active | {campaign.redeemed} redeemed
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span className="rounded-md border border-border/80 bg-card px-2 py-1">
                       Avg stamps {formatPercent(campaign.avgStamps, language)}
                     </span>
@@ -570,7 +570,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
                   </div>
                 </div>
                   <div className="mt-3">
-                  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                     <span>Ready to redeem: {campaign.readyToRedeem}</span>
                     <span>{campaign.totalStamps === null ? 'Reward threshold unavailable' : `${campaign.totalStamps} stamps to reward`}</span>
                   </div>

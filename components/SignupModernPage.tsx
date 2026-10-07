@@ -139,7 +139,7 @@ export const SignupModernPage: React.FC = () => {
       title="Create your workspace"
       subtitle="Set up your brand, publish your public card link, and launch digital loyalty in minutes."
       mode="signup"
-      titleClassName="whitespace-nowrap text-[clamp(2rem,4vw,3.2rem)]"
+      titleClassName="text-[clamp(2rem,4vw,3.2rem)]"
     >
       <form className="space-y-3.5" onSubmit={handleSubmit}>
         <div className="space-y-1.5">

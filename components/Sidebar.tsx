@@ -116,8 +116,8 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
          <PlanBadge />
          {currentUser && (
           <div className="rounded-lg border border-border/80 bg-card px-3 py-3 text-xs text-muted-foreground shadow-subtle">
-              <div className="font-semibold text-foreground">{currentUser.businessName}</div>
-              <div className="font-mono">@{currentOwner?.slug ?? "staff"}</div>
+              <div className="break-words font-semibold text-foreground">{currentUser.businessName}</div>
+              <div className="break-all font-mono">@{currentOwner?.slug ?? "staff"}</div>
               {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">{t('Staff Access')}</div>}
           </div>
          )}

@@ -108,7 +108,7 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
 
   return (
     <LocalizedTree>
-      <section className="mx-4 mb-6 w-full max-w-xl rounded-3xl border border-black/5 bg-white/90 p-5 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)] backdrop-blur md:mx-0 md:p-6">
+      <section className="mx-auto mb-6 w-[calc(100%_-_2rem)] max-w-xl rounded-3xl border border-black/5 bg-white/90 p-4 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)] backdrop-blur sm:p-5 md:mx-0 md:w-full md:p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{t('Rewards')}</p>
@@ -138,8 +138,8 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
             {rewards.map(reward => (
               <article key={reward.id} className="rounded-2xl border border-gray-200 bg-white p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{reward.name}</h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words font-semibold text-gray-900">{reward.name}</h3>
                     <p className="mt-1 text-sm text-gray-600">{reward.description}</p>
                   </div>
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
@@ -154,11 +154,11 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
                     : reward.minimumPoints > 0 ? `${t('Requires at least')} ${reward.minimumPoints} ${t('points')}` : `${t('Claims')}: ${reward.customerClaimCount}/${reward.maxClaimsPerCustomer}`}</span>
                   <span>{reward.remainingQuantity === null ? t('Unlimited stock') : `${reward.remainingQuantity} ${t('remaining')}`}</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-500">{reward.missionCompletions?.length
+                <div className="mt-3 flex flex-col gap-3 border-t border-gray-100 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-words text-xs text-gray-500">{reward.missionCompletions?.length
                     ? t('Claim this reward with the mission completion; points are not charged.')
                     : `${t('Offer ends')} ${formatDate(reward.endsAt, language)}`}</span>
-                  <Button type="button" size="sm" disabled={!reward.canClaim || claimingId !== null} onClick={() => void handleClaim(reward)}>
+                  <Button type="button" size="sm" className="w-full shrink-0 sm:w-auto" disabled={!reward.canClaim || claimingId !== null} onClick={() => void handleClaim(reward)}>
                     <TicketCheck size={14} className="mr-1.5" />{claimingId === reward.id ? t('Creating code...') : t('Claim')}
                   </Button>
                 </div>

@@ -4,9 +4,12 @@ export const buildPublicCardUrl = (slug: string, uniqueId: string) => {
   return `${window.location.origin}/${slug}/${uniqueId}`;
 };
 
-export const buildCampaignSignupUrl = (slug: string, campaignId: string) => {
+export const buildCampaignSignupUrl = (slug: string, campaignId: string, referralCode?: string) => {
   if (!slug || !campaignId) return "";
-  const path = `/${slug}/join/${encodeURIComponent(campaignId)}`;
+  const params = new URLSearchParams();
+  if (referralCode) params.set('ref', referralCode);
+  const query = params.toString();
+  const path = `/${slug}/join/${encodeURIComponent(campaignId)}${query ? `?${query}` : ''}`;
   if (typeof window === "undefined") return path;
   return `${window.location.origin}${path}`;
 };

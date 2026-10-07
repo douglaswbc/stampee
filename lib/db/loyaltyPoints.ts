@@ -4,6 +4,7 @@ import type { CustomerLoyaltyPoints, LoyaltyPointLevel } from '../../types';
 export interface LoyaltyPointsConfiguration {
   isEnabled: boolean;
   pointsPerVisit: number;
+  welcomePoints: number;
   levels: LoyaltyPointLevel[];
 }
 
@@ -41,6 +42,7 @@ export async function fetchLoyaltyPointsConfiguration(): Promise<
     configuration: {
       isEnabled: row.isEnabled === true,
       pointsPerVisit: Number(row.pointsPerVisit) || 10,
+      welcomePoints: Number(row.welcomePoints) || 0,
       levels,
     },
   };
@@ -52,6 +54,7 @@ export async function saveLoyaltyPointsConfiguration(configuration: LoyaltyPoint
   const { data, error } = await supabase.rpc('save_owner_loyalty_points_configuration', {
     is_enabled_input: configuration.isEnabled,
     points_per_visit_input: configuration.pointsPerVisit,
+    welcome_points_input: configuration.welcomePoints,
     levels_input: configuration.levels.map(level => ({
       name: level.name,
       min_points: level.minPoints,
@@ -66,6 +69,7 @@ export async function saveLoyaltyPointsConfiguration(configuration: LoyaltyPoint
     configuration: {
       isEnabled: row.isEnabled === true,
       pointsPerVisit: Number(row.pointsPerVisit) || configuration.pointsPerVisit,
+      welcomePoints: Number(row.welcomePoints) || 0,
       levels: Array.isArray(row.levels)
         ? row.levels.map(parseLevel).filter((level): level is LoyaltyPointLevel => level !== null)
         : configuration.levels,
@@ -118,6 +122,7 @@ export function parseCustomerLoyaltyPoints(value: unknown): CustomerLoyaltyPoint
       if (!entry || typeof entry.description !== 'string' || typeof entry.createdAt !== 'string') return [];
       const entryType = entry.entryType === 'visit_reversal' || entry.entryType === 'manual_adjustment'
         || entry.entryType === 'reward_redemption' || entry.entryType === 'reward_refund'
+        || entry.entryType === 'welcome_bonus' || entry.entryType === 'referral_reward'
         ? entry.entryType
         : 'visit';
       return [{ entryType, pointsDelta: Number(entry.pointsDelta) || 0, description: entry.description, createdAt: entry.createdAt }];

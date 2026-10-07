@@ -11,6 +11,8 @@ export interface PublicCampaignSignupContext {
     name: string;
     isEnabled: boolean;
   };
+  pointsEnabled: boolean;
+  welcomePoints: number;
 }
 
 export type PublicCampaignSignupOutcome =
@@ -34,6 +36,8 @@ export async function fetchPublicCampaignSignupContext(
   const payload = data as {
     owner?: { id?: string; slug?: string; businessName?: string };
     campaign?: { id?: string; name?: string; isEnabled?: boolean };
+    pointsEnabled?: boolean;
+    welcomePoints?: number;
   };
 
   if (!payload.owner?.id || !payload.owner.slug || !payload.campaign?.id || !payload.campaign.name) {
@@ -51,7 +55,19 @@ export async function fetchPublicCampaignSignupContext(
       name: payload.campaign.name,
       isEnabled: payload.campaign.isEnabled !== false,
     },
+    pointsEnabled: payload.pointsEnabled === true,
+    welcomePoints: Number(payload.welcomePoints) || 0,
   };
+}
+
+export async function fetchPublicReferralCode(slug: string, cardUniqueId: string): Promise<string | null> {
+  const { data, error } = await supabase.rpc('get_public_referral_link', {
+    slug_input: slug,
+    card_unique_id: cardUniqueId,
+  });
+  if (error || !data || typeof data !== 'object') return null;
+  const code = (data as { referralCode?: unknown }).referralCode;
+  return typeof code === 'string' && code.length > 0 ? code : null;
 }
 
 export async function registerPublicCampaignSignup(input: {
@@ -60,6 +76,7 @@ export async function registerPublicCampaignSignup(input: {
   name: string;
   email?: string;
   mobile?: string;
+  referralCode?: string;
 }): Promise<PublicCampaignSignupOutcome> {
   const { data, error } = await supabase.rpc('register_public_campaign_signup', {
     slug_input: input.slug,
@@ -67,6 +84,7 @@ export async function registerPublicCampaignSignup(input: {
     customer_name_input: input.name,
     customer_email_input: input.email ?? '',
     customer_mobile_input: input.mobile ?? '',
+    referral_code_input: input.referralCode ?? '',
   });
 
   if (error || !data || typeof data !== 'object') {
