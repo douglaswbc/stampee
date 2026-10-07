@@ -153,3 +153,7 @@ Esses itens exigem decisão de produto e escopo próprios antes de implementaç�
 - [Enggaja — Instagram](https://enggaja.com/instagram)
 - [README do Stampfy](README.md)
 - [Schema base do Supabase](supabase/migration.sql)
+
+## Novo módulo planejado: sites institucionais
+
+O plano para sites públicos de cada comércio, menu de administração, páginas institucionais, diretório de produtos/serviços, landing pages, SEO local, publicação e domínios está em [docs/sites-institucionais.md](docs/sites-institucionais.md). Este é um escopo futuro e separado das fases de fidelidade acima; ainda não foi implementado.
