@@ -6,6 +6,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 import { getSlugHint, isSlugValid, normalizeSlug } from "../lib/slug";
+import { getHomePathForRole } from "../types";
 
 const inputCls =
   "h-10 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
@@ -44,6 +45,7 @@ export const SignupClassicPage: React.FC = () => {
   const normalizedSlug = normalizeSlug(slugInput);
   const slugValid = isSlugValid(normalizedSlug);
   const slugHint = getSlugHint(normalizedSlug);
+  const publicUrlHost = typeof window !== "undefined" ? window.location.host : "";
 
   useEffect(() => {
     if (!slugTouched) {
@@ -123,7 +125,7 @@ export const SignupClassicPage: React.FC = () => {
   };
 
   if (!loading && currentUser) {
-    return <Navigate to={currentUser.role === "staff" ? "/issued-cards" : "/dashboard"} replace />;
+    return <Navigate to={getHomePathForRole(currentUser.role)} replace />;
   }
 
   const isSubmitting = busy;
@@ -199,7 +201,7 @@ export const SignupClassicPage: React.FC = () => {
 
           <div className="flex items-center gap-2 rounded-xl border border-black/[0.1] bg-white px-4 py-3 focus-within:border-[#1d1d1f]">
             <Link2 className="h-4 w-4 shrink-0 text-[#6e6e73]" />
-            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">stampee.co/</span>
+            <span className="shrink-0 text-sm font-medium text-[#6e6e73]">{publicUrlHost}/</span>
             <input
               value={normalizedSlug}
               onChange={(e) => {

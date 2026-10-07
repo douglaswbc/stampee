@@ -100,7 +100,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
   const handleIssueCard = (campaign: Template, customer: Customer | null, newCustomerData: {name: string, email: string, mobile: string}): IssuedCard => {
       let targetCustomer = customer;
       const actorName = currentUser?.businessName ?? "Owner";
-      const actorRole = currentUser?.role ?? "owner";
+      const actorRole = currentUser?.role === "staff" ? "staff" : "owner";
       const actorId = currentUser?.id;
 
       if (!targetCustomer) {
@@ -204,7 +204,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
         timestamp: now.getTime(),
         title: txTitle,
         actorName: currentUser?.businessName ?? "Owner",
-        actorRole: currentUser?.role ?? "owner",
+        actorRole: currentUser?.role === "staff" ? "staff" : "owner",
         actorId: currentUser?.id
     };
 
@@ -258,7 +258,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
             title: 'Stamp Removed',
             remarks: 'Manual correction',
             actorName: currentUser?.businessName ?? "Owner",
-            actorRole: currentUser?.role ?? "owner",
+            actorRole: currentUser?.role === "staff" ? "staff" : "owner",
             actorId: currentUser?.id
         };
 

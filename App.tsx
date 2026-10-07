@@ -84,6 +84,9 @@ const TemplatesGallery = lazy(() => import('./components/TemplatesGallery').then
 const TransactionsPage = lazy(() => import('./components/TransactionsPage').then((module) => ({ default: module.TransactionsPage })));
 const AnalyticsPage = lazy(() => import('./components/AnalyticsPage').then((module) => ({ default: module.AnalyticsPage })));
 const LoginPage = lazy(() => import('./components/LoginPage').then((module) => ({ default: module.LoginPage })));
+const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
+const SignupConfirmationPage = lazy(() => import('./components/SignupConfirmationPage').then((module) => ({ default: module.SignupConfirmationPage })));
+const PlatformAdminPage = lazy(() => import('./components/PlatformAdminPage').then((module) => ({ default: module.PlatformAdminPage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
@@ -700,10 +703,15 @@ const AppRoutes: React.FC = () => {
         <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />
         <Route path="/:slug/:uniqueId" element={<PublicCardWrapper />} />
         <Route path="/login" element={withSuspense(<LoginPage />)} />
+        <Route path="/signup" element={withSuspense(<SignupPage />)} />
+        <Route path="/signup-confirmation" element={withSuspense(<SignupConfirmationPage />)} />
         <Route path="/forgot-password" element={withSuspense(<ForgotPasswordPage />)} />
 
         {/* Authenticated Routes */}
         <Route element={<RequireAuth />}>
+          <Route element={<RequireRole allowed={["platform_admin"]} />}>
+            <Route path="/platform" element={withSuspense(<PlatformAdminPage />)} />
+          </Route>
           <Route element={<RequireRole allowed={["owner"]} />}>
             <Route path="/active/:cardId" element={<ActiveCardWrapper templates={createdCards} />} />
             <Route path="/preview/:templateId" element={<PreviewWrapper />} />

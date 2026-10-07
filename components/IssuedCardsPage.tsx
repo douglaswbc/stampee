@@ -180,7 +180,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
     }
 
     const actorName = currentUser?.businessName ?? "Owner";
-    const actorRole = currentUser?.role ?? "owner";
+    const actorRole = currentUser?.role === "staff" ? "staff" : "owner";
     const actorId = currentUser?.id;
 
     let targetCustomer = customer;
@@ -401,7 +401,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
           canIssue={canIssue}
           allowRedeem={true}
           actorName={currentUser?.businessName ?? "Owner"}
-          actorRole={currentUser?.role ?? "owner"}
+          actorRole={currentUser?.role === "staff" ? "staff" : "owner"}
           actorId={currentUser?.id}
           onMissionCardUpdate={handleMissionCardUpdate}
           onScanRequest={() => setIsScanOpen(true)}

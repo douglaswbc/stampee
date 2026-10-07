@@ -7,6 +7,7 @@ import { Input } from "./ui/input";
 import { useAuth } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
 import { DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { getHomePathForRole } from "../types";
 
 const inputCls =
   "h-12 rounded-xl border-black/[0.1] bg-[#f5f5f7] text-[#1d1d1f] placeholder:text-[#6e6e73]/50 focus-visible:border-[#1d1d1f] focus-visible:ring-0";
@@ -40,7 +41,10 @@ export const LoginClassicPage: React.FC = () => {
     });
 
   if (!loading && currentUser) {
-    return <Navigate to={fromPath ?? (currentUser.role === "staff" ? "/issued-cards" : "/dashboard")} replace />;
+    const destination = currentUser.role === "platform_admin"
+      ? "/platform"
+      : fromPath ?? getHomePathForRole(currentUser.role);
+    return <Navigate to={destination} replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {

@@ -6,7 +6,7 @@ export const profileToUser = (row: Record<string, unknown>): User => ({
   businessName: row.business_name as string,
   email: row.email as string,
   slug: row.slug as string | undefined,
-  role: row.role as 'owner' | 'staff',
+  role: row.role as User['role'],
   ownerId: row.owner_id as string | undefined,
   status: row.status as 'unverified' | 'verified',
   access: row.access as 'active' | 'disabled',

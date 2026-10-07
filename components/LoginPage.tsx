@@ -9,6 +9,7 @@ import { useAuth } from "./AuthProvider";
 import type { AuthResult } from "./AuthProvider";
 import { trackEvent } from "../lib/analytics";
 import { DEMO_WORKSPACE_ENABLED } from "../lib/siteConfig";
+import { getHomePathForRole } from "../types";
 
 const inputCls =
   "h-14 rounded-[1.2rem] border border-black/[0.08] bg-[#f4f1ea] px-4 text-[15px] text-[#171512] shadow-none placeholder:text-[#8a8276] focus-visible:border-black/25 focus-visible:bg-white focus-visible:ring-0";
@@ -43,7 +44,10 @@ export const LoginPage: React.FC = () => {
 
   // Once auth state is resolved and user is logged in, redirect
   if (!loading && currentUser) {
-    return <Navigate to={fromPath ?? (currentUser.role === "staff" ? "/issued-cards" : "/dashboard")} replace />;
+    const destination = currentUser.role === "platform_admin"
+      ? "/platform"
+      : fromPath ?? getHomePathForRole(currentUser.role);
+    return <Navigate to={destination} replace />;
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -143,6 +147,10 @@ export const LoginPage: React.FC = () => {
         {loading && !busy && (
           <p className="text-center text-xs text-[#777062]">Checking existing session...</p>
         )}
+
+        <p className="text-center text-sm text-[#6d6658]">
+          New to Stampfy? <Link to="/signup" className="font-semibold text-[#1d1d1f] underline-offset-2 hover:underline">Create a business account</Link>
+        </p>
 
         {showDemoWorkspace && (
           <>

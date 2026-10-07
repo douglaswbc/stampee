@@ -4,9 +4,9 @@
 
 # Stampfy
 
-Stampfy is a digital loyalty card and stamp card app for a single business. You can self-host the frontend and connect it to your own Supabase project.
+Stampfy is a digital loyalty and stamp card platform. Each owner account manages one business, with its data isolated in Supabase. You can self-host the frontend and connect it to your own Supabase project.
 
-All access starts at `/login`. There is no marketplace or multi-tenant public signup flow for businesses.
+Owners can register a business at `/signup` and sign in at `/login`. Each owner account is one tenant in the current SaaS model. Platform administrators use the separate `/platform` console; staff sign in through `/{slug}/staff`; customers can join a campaign at `/{slug}/join/{campaignId}` and view a card at `/{slug}/{uniqueId}`.
 
 ## Tech Stack
 
@@ -36,11 +36,12 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    ```bash
    cp .env.example .env.local
    ```
+   In PowerShell, use `Copy-Item .env.example .env.local`.
 
 3. Configure `.env.local`:
 
    Required:
-   - `VITE_APP_URL`: your app URL, for example `http://localhost:5173`
+   - `VITE_APP_URL`: your app URL, for example `http://localhost:3000` for local development
    - `VITE_SUPABASE_URL`: your [Supabase](https://supabase.com) project URL
    - `VITE_SUPABASE_ANON_KEY`: your Supabase anon key
 
@@ -51,7 +52,7 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
 4. Set up the database in the Supabase SQL Editor:
    ```text
    supabase/migration.sql   -> run first for a fresh install
-   supabase/seed.sql        -> optional, run second for the local/dev demo admin
+   supabase/seed.sql        -> optional, run second for local/dev demo and platform accounts
    ```
 
    Notes:
@@ -64,6 +65,10 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    - To let mission completions unlock rewards from the shared catalog, run [`supabase/legacy-patches/link_mission_rewards_to_catalog.sql`](supabase/legacy-patches/link_mission_rewards_to_catalog.sql) after the missions, points, and reward catalog patches. Customers then claim a code on their public card, while stock, expiry, validation, and redemption history use the existing reward flow. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/link_mission_rewards_to_catalog.sql`.
    - To enable the owner-only “Reset business data” control in Settings on an existing project, run [`supabase/legacy-patches/reset_owner_business_data.sql`](supabase/legacy-patches/reset_owner_business_data.sql). It clears operational records while preserving owner/staff access and company preferences. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/reset_owner_business_data.sql`.
    - For an existing project, also run [`supabase/legacy-patches/add_company_locale_preferences.sql`](supabase/legacy-patches/add_company_locale_preferences.sql) to persist the company's interface language and currency preferences.
+   - To persist the company's time zone, run [`supabase/legacy-patches/add_company_time_zone.sql`](supabase/legacy-patches/add_company_time_zone.sql) before deploying the time zone settings. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_company_time_zone.sql`.
+   - For welcome points and customer referrals, run [`supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`](supabase/legacy-patches/add_customer_welcome_and_referral_points.sql) after the points and reward catalog patches. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`.
+   - For an existing project, apply [`supabase/legacy-patches/add_saas_platform_foundation.sql`](supabase/legacy-patches/add_saas_platform_foundation.sql) to add the platform admin registry and tenant management RPCs. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_saas_platform_foundation.sql`.
+   - The development seed creates a local platform administrator. For production, create an Auth user with a unique password first, set its email in [`supabase/bootstrap_platform_admin.sql`](supabase/bootstrap_platform_admin.sql), then run that bootstrap in the SQL Editor.
    - [`supabase/seed.sql`](supabase/seed.sql) is for local or development environments only because it creates a known demo account.
 
 5. Start the dev server:
@@ -71,7 +76,7 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    npm run dev
    ```
 
-## Demo Admin Seed
+## Development Seed Accounts
 
 If you run [`supabase/seed.sql`](supabase/seed.sql), it creates this development-only owner account:
 
@@ -81,7 +86,16 @@ If you run [`supabase/seed.sql`](supabase/seed.sql), it creates this development
 | Password | `Admin1234` |
 | Slug | `demo` |
 
-Change the password after first login in `Settings -> Account`.
+The same seed also creates a development-only platform administrator:
+
+| Field | Value |
+|---|---|
+| Email | `platform@stampfy.local` |
+| Password | `PlatformAdmin123!` |
+
+These known credentials are for local development only. Never use them in production.
+
+Change the demo business password after first login in `Settings -> Account`. Use `/forgot-password` to change the platform account password.
 
 Do not use the demo seed account as-is in production.
 
@@ -96,10 +110,14 @@ There is currently no automated test suite in the repo. `npm run build` is the m
 
 ## Product Notes
 
-- Single-business mode only
-- No public business signup flow
+- Each owner account manages one business; business data and staff access are isolated by owner.
+- Public business signup is available at `/signup`; each owner profile currently represents one tenant.
+- The platform console is restricted to user IDs registered in `platform_admins`; its role is separate from tenant owners.
+- The tenant console currently supports listing businesses and suspending/restoring access. Billing and multi-user business memberships are future SaaS work.
+- See the [SaaS foundation notes](docs/saas-foundation.md) for the current tenant model and the next platform steps.
 - Staff accounts are created by the owner from `Settings -> Staff`
-- Public customer-facing routes are supported for viewing issued cards and joining enabled campaigns
+- Public customer routes support campaign enrollment, digital cards, mission progress, points, referrals, and reward redemption.
+- A public institutional site and product/service directory are planned, not implemented. See the [institutional site module plan](docs/sites-institucionais.md).
 
 ## Deploy
 

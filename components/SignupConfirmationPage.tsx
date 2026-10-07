@@ -4,6 +4,7 @@ import { CheckCircle2, MailCheck } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { Button } from "./ui/button";
 import PublicFooter from "./PublicFooter";
+import { getHomePathForRole } from "../types";
 
 type LocationState = {
   email?: string;
@@ -16,7 +17,7 @@ export const SignupConfirmationPage: React.FC = () => {
   const email = state?.email?.trim();
 
   if (!loading && currentUser) {
-    return <Navigate to={currentUser.role === "staff" ? "/issued-cards" : "/dashboard"} replace />;
+    return <Navigate to={getHomePathForRole(currentUser.role)} replace />;
   }
 
   return (

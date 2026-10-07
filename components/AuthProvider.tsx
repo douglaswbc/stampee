@@ -173,6 +173,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const owner = await fetchProfile(profile.ownerId);
       setCurrentOwner(owner);
       if (owner) setStaffAccounts(await fetchStaffAccounts(owner.id));
+    } else {
+      setCurrentOwner(null);
+      setStaffAccounts([]);
     }
   }, [createMissingProfile, fetchProfileWithRetry, waitForAuthUser]);
 
@@ -280,6 +283,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ok: false,
           error: ACCOUNT_SETUP_ERROR,
         };
+      }
+
+      if (profile.access === "disabled" && profile.role !== "platform_admin") {
+        await supabase.auth.signOut();
+        return { ok: false, error: "This account is disabled. Contact Stampfy support." };
       }
 
       await loadFullSession(data.user.id, data.user);

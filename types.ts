@@ -64,7 +64,7 @@ export interface Transaction {
   remarks?: string;
   actorId?: string;
   actorName?: string;
-  actorRole?: UserRole;
+  actorRole?: 'owner' | 'staff';
 }
 
 export interface IssuedCard {
@@ -214,7 +214,13 @@ export interface LoyaltyRewardRedemption {
 
 // Internal account state. Email confirmation now comes from Supabase auth.
 export type AccountStatus = 'unverified' | 'verified';
-export type UserRole = 'owner' | 'staff';
+export type UserRole = 'owner' | 'staff' | 'platform_admin';
+
+export const getHomePathForRole = (role: UserRole): string => {
+  if (role === 'platform_admin') return '/platform';
+  if (role === 'staff') return '/issued-cards';
+  return '/dashboard';
+};
 export type AccessStatus = 'active' | 'disabled';
 export type SubscriptionTier = 'free' | 'pro';
 export type InterfaceLanguage = 'pt-BR' | 'es' | 'en';

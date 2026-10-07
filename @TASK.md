@@ -8,7 +8,7 @@
 
 ## Objetivo
 
-Ampliar o Stampfy com recursos de fidelidade inspirados nas funcionalidades divulgadas pelo Enggaja, aproveitando a base de cartões e carimbos que já existe. A implementação deve ser incremental, compatível com os dados atuais e adequada ao modelo do Stampfy: uma empresa por instalação.
+Ampliar o Stampfy com recursos de fidelidade inspirados nas funcionalidades divulgadas pelo Enggaja, aproveitando a base de cartões e carimbos que já existe. A implementação deve ser incremental e compatível com os dados atuais. O produto agora está sendo estruturado como SaaS multi-tenant: cada perfil owner representa um comércio e seus dados são isolados por `owner_id`. Consulte também o [plano da fundação SaaS](docs/saas-foundation.md).
 
 Este arquivo é uma especificação para orientar o desenvolvimento. Não reproduzir marca, textos, identidade visual ou código do Enggaja.
 
