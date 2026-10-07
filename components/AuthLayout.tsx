@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { LocalizedTree } from "./LocalizedTree";
 
 interface AuthLayoutProps {
   title: string;
@@ -61,6 +62,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   const t = THEME_CONFIG[theme];
 
   return (
+    <LocalizedTree>
     <div className="min-h-screen bg-[#fafafa] text-[#1d1d1f] antialiased">
       <style>{`
         @keyframes auth-a { 0%,100%{transform:translateY(0px)} 55%{transform:translateY(-26px)} }
@@ -147,5 +149,6 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
 
       </div>
     </div>
+    </LocalizedTree>
   );
 };

@@ -12,6 +12,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { LocalizedTree } from "./LocalizedTree";
 
 type AuthMode = "login" | "signup" | "staff";
 
@@ -77,7 +78,7 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
     showcaseEyebrow: "Owner workspace",
     showcaseTitle: "Cards that live in the browser.",
     showcaseCopy: "Keep campaigns, issued cards, and return visits in one place without sending customers to an app store.",
-    showcaseSlug: "/stampee",
+    showcaseSlug: "/stampfy",
     card: {
       eyebrow: "Repeat visits",
       title: "Launch, stamp, retain.",
@@ -98,7 +99,7 @@ const MODE_CONFIG: Record<AuthMode, ThemeConfig> = {
       className: "bg-[#edd9bf] text-[#473521] shadow-[0_28px_96px_-52px_rgba(60,31,7,0.48)]",
     },
     pills: [
-      { label: "/stampee", className: "bg-[#f4f1ec] text-[#1f1d19]", icon: Sparkles },
+      { label: "/stampfy", className: "bg-[#f4f1ec] text-[#1f1d19]", icon: Sparkles },
       { label: "Owner dashboard", className: "bg-white/88 text-[#3c342a]", icon: WalletCards },
       { label: "Browser card", className: "bg-white/72 text-[#3c342a]", icon: QrCode },
     ],
@@ -181,6 +182,7 @@ const MobileShowcase: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   const HeroPillIcon = theme.pills[0].icon;
 
   return (
+    <LocalizedTree>
     <div className="lg:hidden">
       <div className={`relative overflow-hidden rounded-[2rem] ${theme.rightBg} px-4 py-5 text-white shadow-[0_24px_70px_-44px_rgba(0,0,0,0.4)]`}>
         <div className="absolute right-[-2.5rem] top-[-2rem] h-36 w-36 rounded-[2.5rem] border border-white/20 bg-black/10" />
@@ -209,6 +211,7 @@ const MobileShowcase: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
         </div>
       </div>
     </div>
+    </LocalizedTree>
   );
 };
 
@@ -217,6 +220,7 @@ const DesktopShowcase: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
   const PrimaryPillIcon = theme.pills[0].icon;
 
   return (
+    <LocalizedTree>
     <aside className={`relative hidden min-h-[100dvh] overflow-hidden lg:flex lg:items-center lg:justify-center ${theme.rightBg}`}>
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="auth-orbit absolute right-[-9rem] top-[-4rem] h-[22rem] w-[22rem] rounded-[4rem] border border-black/15 bg-black/10" />
@@ -320,6 +324,7 @@ const DesktopShowcase: React.FC<{ theme: ThemeConfig }> = ({ theme }) => {
         </div>
       </div>
     </aside>
+    </LocalizedTree>
   );
 };
 
@@ -334,6 +339,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
   const theme = MODE_CONFIG[mode];
 
   return (
+    <LocalizedTree>
     <div className={`min-h-[100dvh] ${theme.leftBg} text-[#1d1d1f] antialiased`}>
       <style>{`
         @keyframes auth-float-a { 0%, 100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(0,-12px,0); } }
@@ -401,5 +407,6 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
         <DesktopShowcase theme={theme} />
       </div>
     </div>
+    </LocalizedTree>
   );
 };
