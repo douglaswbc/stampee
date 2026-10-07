@@ -1,14 +1,14 @@
-# Plano de novas funcionalidades para o Stampee
+# Plano de novas funcionalidades para o Stampfy
 
 ## Objetivo
 
-Ampliar o Stampee com recursos de fidelidade inspirados nas funcionalidades divulgadas pelo Enggaja, aproveitando a base de cartões e carimbos que já existe. A implementação deve ser incremental, compatível com os dados atuais e adequada ao modelo do Stampee: uma empresa por instalação.
+Ampliar o Stampfy com recursos de fidelidade inspirados nas funcionalidades divulgadas pelo Enggaja, aproveitando a base de cartões e carimbos que já existe. A implementação deve ser incremental, compatível com os dados atuais e adequada ao modelo do Stampfy: uma empresa por instalação.
 
 Este arquivo é uma especificação para orientar o desenvolvimento. Não reproduzir marca, textos, identidade visual ou código do Enggaja.
 
 ## Estado atual do produto
 
-O Stampee já oferece autenticação para proprietário e equipe, campanhas de cartões, cadastro de clientes, emissão de cartões digitais, registro e remoção de carimbos, resgate de recompensa, leitura por QR Code, página pública do cartão, entrada pública em campanhas e histórico/analytics.
+O Stampfy já oferece autenticação para proprietário e equipe, campanhas de cartões, cadastro de clientes, emissão de cartões digitais, registro e remoção de carimbos, resgate de recompensa, leitura por QR Code, página pública do cartão, entrada pública em campanhas e histórico/analytics.
 
 A tabela `transactions` registra eventos como `stamp_add`, `stamp_remove`, `redeem` e `issued`. Os cartões emitidos mantêm seu próprio total de carimbos e as campanhas definem uma recompensa e uma quantidade-alvo. As novas funcionalidades devem complementar esse fluxo, sem exigir que cartões existentes sejam convertidos ou reemitidos.
 
@@ -136,5 +136,5 @@ Esses itens exigem decisão de produto e escopo próprios antes de implementaç�
 - [Enggaja — missões](https://enggaja.com/missoes)
 - [Enggaja — níveis](https://enggaja.com/niveis)
 - [Enggaja — Instagram](https://enggaja.com/instagram)
-- [README do Stampee](README.md)
+- [README do Stampfy](README.md)
 - [Schema base do Supabase](supabase/migration.sql)

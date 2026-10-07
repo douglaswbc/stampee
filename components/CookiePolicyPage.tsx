@@ -39,7 +39,7 @@ export const CookiePolicyPage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <Button asChild variant="ghost" className="rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.05]">
             <Link to="/">
@@ -59,7 +59,7 @@ export const CookiePolicyPage: React.FC = () => {
                 Cookie Policy
               </div>
               <h1 className="mt-6 text-[clamp(2.8rem,5.4vw,5.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-white">
-                How cookies are used on Stampee.
+                How cookies are used on Stampfy.
               </h1>
               <p className="mt-6 max-w-[38rem] text-[clamp(1rem,1.35vw,1.16rem)] leading-8 text-white/75">
                 Last updated March 9, 2026.

@@ -7,7 +7,7 @@ import { PublicFooter } from "./PublicFooter";
 
 const steps = [
   {
-    title: "Create your Stampee account",
+    title: "Create your Stampfy account",
     body: "Sign up with your business email, then confirm the account so you can access the dashboard and start configuring your workspace.",
     bullets: [
       "Use an email your team can access long term.",
@@ -104,7 +104,7 @@ export const GettingStartedArticlePage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6">
           <Link to="/" className="inline-flex items-center gap-3">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.06]">
@@ -141,7 +141,7 @@ export const GettingStartedArticlePage: React.FC = () => {
                 Launch your first loyalty campaign in one clean pass.
               </h1>
               <p className="mt-8 max-w-[38rem] text-[clamp(1.08rem,1.65vw,1.42rem)] leading-[1.45] text-[#23461d]/82">
-                This guide follows the same flow your business will take inside Stampee: set up the account, shape the offer, test the customer journey, and go live with confidence.
+                This guide follows the same flow your business will take inside Stampfy: set up the account, shape the offer, test the customer journey, and go live with confidence.
               </p>
               <div className="mt-8 flex flex-wrap gap-3 text-sm font-semibold text-[#23461d]/78">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-4 py-2">
@@ -260,7 +260,7 @@ export const GettingStartedArticlePage: React.FC = () => {
                 <div className="rounded-[2rem] bg-[#ffe100] p-6 text-[#302900] shadow-[0_24px_60px_-34px_rgba(76,66,0,0.32)]">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5a4f00]">What success looks like</p>
                   <p className="mt-4 text-sm leading-7 text-[#4f4500]">
-                    By the end of setup, you should have one active campaign, one issued test card, and one completed transaction recorded in Stampee.
+                    By the end of setup, you should have one active campaign, one issued test card, and one completed transaction recorded in Stampfy.
                   </p>
                 </div>
 

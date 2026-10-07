@@ -1,5 +1,5 @@
 -- Loyalty missions, server-validated card actions, and claim audit trail.
--- Safe to re-run on existing Stampee projects.
+-- Safe to re-run on existing Stampfy projects.
 
 alter table public.transactions
   add column if not exists created_at timestamptz not null default now();

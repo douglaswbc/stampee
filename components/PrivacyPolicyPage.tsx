@@ -9,7 +9,7 @@ const sections = [
   {
     title: "Information we collect",
     body:
-      "We collect the information needed to run Stampee, including account details, business profile information, loyalty campaign data, customer records you add to the platform, transaction history, and basic technical logs used to keep the service secure and working properly.",
+      "We collect the information needed to run Stampfy, including account details, business profile information, loyalty campaign data, customer records you add to the platform, transaction history, and basic technical logs used to keep the service secure and working properly.",
   },
   {
     title: "How we use information",
@@ -19,12 +19,12 @@ const sections = [
   {
     title: "Sharing and service providers",
     body:
-      "We do not sell personal information. We may share data with infrastructure, analytics, authentication, or storage providers that help us operate Stampee, but only to the extent needed to deliver the service.",
+      "We do not sell personal information. We may share data with infrastructure, analytics, authentication, or storage providers that help us operate Stampfy, but only to the extent needed to deliver the service.",
   },
   {
     title: "Cookies and local storage",
     body:
-      "Stampee may use cookies, browser storage, and similar technologies to keep users signed in, remember preferences, and support normal application behavior.",
+      "Stampfy may use cookies, browser storage, and similar technologies to keep users signed in, remember preferences, and support normal application behavior.",
   },
   {
     title: "Data retention",
@@ -34,7 +34,7 @@ const sections = [
   {
     title: "Security",
     body:
-      "We use reasonable technical and organizational safeguards to protect the information processed through Stampee. No online system is completely risk free, so users should also protect account credentials and access to their devices.",
+      "We use reasonable technical and organizational safeguards to protect the information processed through Stampfy. No online system is completely risk free, so users should also protect account credentials and access to their devices.",
   },
   {
     title: "Your choices",
@@ -49,7 +49,7 @@ export const PrivacyPolicyPage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <Button asChild variant="ghost" className="rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.05]">
             <Link to="/">
@@ -69,7 +69,7 @@ export const PrivacyPolicyPage: React.FC = () => {
                 Privacy Policy
               </div>
               <h1 className="mt-6 text-[clamp(2.8rem,5.4vw,5.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-white">
-                How Stampee handles account, loyalty, and customer data.
+                How Stampfy handles account, loyalty, and customer data.
               </h1>
               <p className="mt-6 max-w-[38rem] text-[clamp(1rem,1.35vw,1.16rem)] leading-8 text-white/82">
                 Last updated March 3, 2026.
@@ -86,9 +86,9 @@ export const PrivacyPolicyPage: React.FC = () => {
                   Overview
                 </h2>
                 <p className="mt-4 text-base leading-8 text-[#50545a]">
-                  This page explains the categories of information Stampee processes, why that information is used,
+                  This page explains the categories of information Stampfy processes, why that information is used,
                   and the general safeguards applied when operating the platform. It is intended as a clear public
-                  summary for business owners and visitors using Stampee.
+                  summary for business owners and visitors using Stampfy.
                 </p>
               </div>
 
@@ -111,7 +111,7 @@ export const PrivacyPolicyPage: React.FC = () => {
                 <ul className="mt-5 space-y-3 text-sm leading-6 text-[#50545a]">
                   <li>Used to run accounts, cards, campaigns, and customer activity.</li>
                   <li>Not sold as personal information.</li>
-                  <li>Shared only with service providers needed to operate Stampee.</li>
+                  <li>Shared only with service providers needed to operate Stampfy.</li>
                   <li>Protected with reasonable operational and technical safeguards.</li>
                 </ul>
               </div>

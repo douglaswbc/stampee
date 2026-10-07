@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="110" viewBox="0 0 420 110" role="img" aria-labelledby="stampfy-title">
+  <title id="stampfy-title">Stampfy</title>
+  <text
+    x="4"
+    y="82"
+    font-family="Inter, Avenir Next, Arial, sans-serif"
+    font-size="88"
+    font-weight="800"
+    letter-spacing="-4"
+  ><tspan fill="#261d39">Stamp</tspan><tspan fill="#e55d00">fy</tspan></text>
+</svg>

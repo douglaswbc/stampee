@@ -22,13 +22,13 @@ interface UpgradePromptProps {
 const buildSubject = (reason?: UpgradePromptProps["reason"]) => {
   switch (reason) {
     case "campaign":
-      return "Stampee beta campaign limits";
+      return "Stampfy beta campaign limits";
     case "card":
-      return "Stampee beta issued card limits";
+      return "Stampfy beta issued card limits";
     case "staff":
-      return "Stampee beta staff limits";
+      return "Stampfy beta staff limits";
     default:
-      return "Stampee beta access";
+      return "Stampfy beta access";
   }
 };
 

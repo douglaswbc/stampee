@@ -1,4 +1,4 @@
--- Stampee upgrade script: avoid per-row auth.uid() re-evaluation in
+-- Stampfy upgrade script: avoid per-row auth.uid() re-evaluation in
 -- profiles/campaigns RLS policies on existing projects.
 -- New projects should use migration.sql instead.
 

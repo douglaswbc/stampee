@@ -339,7 +339,7 @@ export const LandingPage: React.FC = () => {
       <header className="fixed top-0 z-50 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <nav className="flex items-center gap-1.5 sm:gap-2">
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">
@@ -397,10 +397,10 @@ export const LandingPage: React.FC = () => {
             </h1>
             <div style={rise(hero.visible, 170)} className="mt-8 max-w-[38rem] space-y-4">
               <p className="text-[clamp(1.08rem,1.65vw,1.48rem)] leading-[1.45] text-[#23461d]/82">
-                Stampee is the modern, no-app loyalty system that turns one-time visitors into loyal customers — simple, smart, and instantly rewarding.
+                Stampfy is the modern, no-app loyalty system that turns one-time visitors into loyal customers — simple, smart, and instantly rewarding.
               </p>
               <p className="text-sm leading-7 text-[#23461d]/78 sm:text-base">
-                Launch a digital loyalty card with Stampee and run a loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.
+                Launch a digital loyalty card with Stampfy and run a loyalty program for cafes, loyalty program for spa, loyalty program for laundry, loyalty program for carwash, and loyalty program for salons.
               </p>
             </div>
             <div style={rise(hero.visible, 260)} className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
@@ -803,7 +803,7 @@ export const LandingPage: React.FC = () => {
                   How do staff add stamps?
                 </AccordionTrigger>
                 <AccordionContent className="pb-10 text-lg leading-8 text-[#f0b8cf] sm:text-xl">
-                  Staff log in to Stampee, open the customer card, and record the visit. The stamp progress updates immediately.
+                  Staff log in to Stampfy, open the customer card, and record the visit. The stamp progress updates immediately.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -836,7 +836,7 @@ export const LandingPage: React.FC = () => {
       <footer className="border-t border-white/[0.07] bg-[#1d1d1f] px-6 py-8">
         <div className="mx-auto flex max-w-[88rem] flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-7 w-auto opacity-35 invert" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-7 w-auto opacity-35 invert" />
           </Link>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
             <Link
@@ -869,7 +869,7 @@ export const LandingPage: React.FC = () => {
             >
               Terms
             </Link>
-            <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampee. All rights reserved.</p>
+            <p className="text-xs text-white/25">© {new Date().getFullYear()} Stampfy. All rights reserved.</p>
           </div>
         </div>
       </footer>

@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Repair Missing Profiles
+-- Stampfy: Repair Missing Profiles
 -- Repair script for existing Supabase projects.
 -- Run this once in Supabase SQL Editor if users exist in auth.users
 -- but are missing rows in public.profiles.

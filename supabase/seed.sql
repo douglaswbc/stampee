@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Demo Admin Seed Script
+-- Stampfy: Demo Admin Seed Script
 -- Local/development use only.
 -- ============================================================
 -- Run this in the Supabase SQL Editor AFTER running migration.sql.
@@ -7,7 +7,7 @@
 -- credentials for local or development environments only.
 --
 -- Demo credentials:
---   Email   : admin@stampee.local
+--   Email   : admin@stampfy.local
 --   Password: Admin1234
 --   Slug    : demo
 -- ============================================================
@@ -17,7 +17,7 @@ declare
   v_uid uuid := gen_random_uuid();
   v_existing_uid uuid;
   v_column record;
-  v_email text := 'admin@stampee.local';
+  v_email text := 'admin@stampfy.local';
   v_password text := 'Admin1234';
   v_business_name text := 'Demo Business';
   v_slug text := 'demo';

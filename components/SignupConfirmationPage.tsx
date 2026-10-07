@@ -41,7 +41,7 @@ export const SignupConfirmationPage: React.FC = () => {
 
         <header className="relative mx-auto flex max-w-[88rem] items-center justify-between px-6 pb-4 pt-6 sm:px-8">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-10 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-10 w-auto" />
           </Link>
           <Link
             to="/login"

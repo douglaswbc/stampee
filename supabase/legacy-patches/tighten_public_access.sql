@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Tighten Public Access
+-- Stampfy: Tighten Public Access
 -- Upgrade script for existing Supabase projects.
 -- Removes broad public read policies and narrows get_public_card()
 -- to only the fields required by the public card page.

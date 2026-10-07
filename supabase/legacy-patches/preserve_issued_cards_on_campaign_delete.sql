@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Preserve Issued Cards When Deleting Campaigns
+-- Stampfy: Preserve Issued Cards When Deleting Campaigns
 -- Upgrade script for existing Supabase projects.
 -- Converts issued_cards.campaign_id to ON DELETE SET NULL,
 -- backfills template snapshots, and adds an RPC that preserves

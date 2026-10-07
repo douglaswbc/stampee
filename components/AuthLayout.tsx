@@ -81,7 +81,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
       <header className="fixed top-0 z-50 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link to="/">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <Link
             to={t.navLinkTo}

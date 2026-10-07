@@ -1,4 +1,4 @@
--- Stampee upgrade script: set a stable search_path on
+-- Stampfy upgrade script: set a stable search_path on
 -- public.handle_new_user for existing projects.
 -- New projects should use migration.sql instead.
 

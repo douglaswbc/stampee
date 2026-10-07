@@ -1,4 +1,4 @@
-# Contributing to Stampee
+# Contributing to Stampfy
 
 Thanks for your interest in contributing.
 

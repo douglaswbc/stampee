@@ -20,7 +20,7 @@ const showcaseCardPaths = [
 const showcaseImages = showcaseCardPaths.map((href, index) => ({
   id: `demo-${index + 1}`,
   src: `/demo_${index + 1}.png`,
-  alt: `Stampee demo ${index + 1}`,
+  alt: `Stampfy demo ${index + 1}`,
   href,
 }));
 
@@ -71,7 +71,7 @@ export const ShowcasePage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/75 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.06] sm:inline-flex">

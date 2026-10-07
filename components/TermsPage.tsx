@@ -9,27 +9,27 @@ const sections = [
   {
     title: "Service overview",
     body:
-      "Stampee provides browser-based digital loyalty cards and related tools for small businesses. The beta is intended for evaluation and day-to-day campaign use, but features may change as the product evolves.",
+      "Stampfy provides browser-based digital loyalty cards and related tools for small businesses. The beta is intended for evaluation and day-to-day campaign use, but features may change as the product evolves.",
   },
   {
     title: "Acceptable use",
     body:
-      "You may use Stampee only for lawful business activity. You must not use the service to send spam, abuse customer data, attempt unauthorized access, interfere with other accounts, or upload content that infringes the rights of others.",
+      "You may use Stampfy only for lawful business activity. You must not use the service to send spam, abuse customer data, attempt unauthorized access, interfere with other accounts, or upload content that infringes the rights of others.",
   },
   {
     title: "Your data and customer records",
     body:
-      "You are responsible for the business information, campaign content, and customer details you add to Stampee. You should have the right to collect and use that information and should avoid storing unnecessary sensitive data in the product.",
+      "You are responsible for the business information, campaign content, and customer details you add to Stampfy. You should have the right to collect and use that information and should avoid storing unnecessary sensitive data in the product.",
   },
   {
     title: "Beta availability",
     body:
-      "Stampee is currently offered as a soft beta. We may modify, suspend, or remove features, and we do not guarantee uninterrupted availability, specific uptime levels, or that every beta feature will remain in the product.",
+      "Stampfy is currently offered as a soft beta. We may modify, suspend, or remove features, and we do not guarantee uninterrupted availability, specific uptime levels, or that every beta feature will remain in the product.",
   },
   {
     title: "Limitation of liability",
     body:
-      "To the fullest extent allowed by law, Stampee is provided on an as-is and as-available basis during beta. We are not liable for indirect, incidental, special, consequential, or punitive damages, or for loss of revenue, profits, data, or goodwill arising from use of the service.",
+      "To the fullest extent allowed by law, Stampfy is provided on an as-is and as-available basis during beta. We are not liable for indirect, incidental, special, consequential, or punitive damages, or for loss of revenue, profits, data, or goodwill arising from use of the service.",
   },
   {
     title: "Contact",
@@ -43,7 +43,7 @@ export const TermsPage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[88rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <Button asChild variant="ghost" className="rounded-full text-sm text-[#1d1d1f] hover:bg-black/[0.05]">
             <Link to="/">
@@ -63,7 +63,7 @@ export const TermsPage: React.FC = () => {
                 Terms of Service
               </div>
               <h1 className="mt-6 text-[clamp(2.8rem,5.4vw,5.2rem)] font-black leading-[0.92] tracking-[-0.05em] text-white">
-                Terms for using Stampee during the beta.
+                Terms for using Stampfy during the beta.
               </h1>
               <p className="mt-6 max-w-[38rem] text-[clamp(1rem,1.35vw,1.16rem)] leading-8 text-white/75">
                 Last updated March 3, 2026.
@@ -80,7 +80,7 @@ export const TermsPage: React.FC = () => {
                   Overview
                 </h2>
                 <p className="mt-4 text-base leading-8 text-[#50545a]">
-                  These terms describe the core rules for using Stampee in its current beta stage. They are written to
+                  These terms describe the core rules for using Stampfy in its current beta stage. They are written to
                   give small-business users a clear baseline while the product continues to ship improvements.
                 </p>
               </div>
@@ -102,7 +102,7 @@ export const TermsPage: React.FC = () => {
               <div className="bg-white px-6 py-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#1d1d1f]">Beta note</p>
                 <p className="mt-4 text-sm leading-7 text-[#5f4a2c]">
-                  Stampee is still being hardened for broader release. Use the beta with that expectation, and contact{" "}
+                  Stampfy is still being hardened for broader release. Use the beta with that expectation, and contact{" "}
                   <a className="font-medium underline underline-offset-2" href={`mailto:${SUPPORT_EMAIL}`}>
                     {SUPPORT_EMAIL}
                   </a>{" "}

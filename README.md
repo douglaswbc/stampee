@@ -1,10 +1,10 @@
 <div align="center">
-<img width="1200" alt="Stampee preview" src="public/image_1.jpg" />
+<img width="1200" alt="Stampfy preview" src="public/image_1.jpg" />
 </div>
 
-# Stampee
+# Stampfy
 
-Stampee is a digital loyalty card and stamp card app for a single business. You can self-host the frontend and connect it to your own Supabase project.
+Stampfy is a digital loyalty card and stamp card app for a single business. You can self-host the frontend and connect it to your own Supabase project.
 
 All access starts at `/login`. There is no marketplace or multi-tenant public signup flow for businesses.
 
@@ -72,7 +72,7 @@ If you run [`supabase/seed.sql`](supabase/seed.sql), it creates this development
 
 | Field | Value |
 |---|---|
-| Email | `admin@stampee.local` |
+| Email | `admin@stampfy.local` |
 | Password | `Admin1234` |
 | Slug | `demo` |
 

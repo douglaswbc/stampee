@@ -1,4 +1,4 @@
--- Stampee upgrade script: add Supabase storage support for campaign
+-- Stampfy upgrade script: add Supabase storage support for campaign
 -- logo/background uploads on existing projects.
 -- New projects should use migration.sql instead.
 

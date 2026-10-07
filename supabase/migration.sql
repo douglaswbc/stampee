@@ -1,5 +1,5 @@
 -- ============================================================
--- Stampee: Full Database Schema (Idempotent)
+-- Stampfy: Full Database Schema (Idempotent)
 -- Canonical fresh-install script for new Supabase projects.
 -- Safe to re-run in Supabase SQL Editor.
 -- For existing or older projects, use the targeted upgrade/repair
@@ -1011,7 +1011,7 @@ $$ language plpgsql security definer
 set search_path = public;
 
 -- Loyalty missions, server-validated card actions, and claim audit trail.
--- Safe to re-run on existing Stampee projects.
+-- Safe to re-run on existing Stampfy projects.
 
 alter table public.transactions
   add column if not exists created_at timestamptz not null default now();

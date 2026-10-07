@@ -25,7 +25,7 @@ const ArticleCover: React.FC<{
         </p>
       </div>
       <div className="absolute inset-x-[12%] bottom-[10%] rounded-[1.2rem] bg-white/55 px-4 py-3 backdrop-blur-sm">
-        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#5d482d]">Stampee</p>
+        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[#5d482d]">Stampfy</p>
         <p className="mt-1 text-[0.76rem] leading-5 text-[#4b3c26]">
           Owner setup guide for first launch.
         </p>
@@ -81,7 +81,7 @@ export const ArticlesPage: React.FC = () => {
       <header className="fixed top-0 z-30 w-full border-b border-black/[0.06] bg-white/78 backdrop-blur-2xl">
         <div className="mx-auto flex max-w-[112rem] items-center justify-between px-4 py-4 sm:px-6 lg:px-10">
           <Link to="/" className="inline-flex items-center">
-            <img src="/stampee.svg" alt="Stampee" className="h-8 w-auto" />
+            <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-8 w-auto" />
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden rounded-full text-sm font-medium text-[#1d1d1f] hover:bg-black/[0.05] sm:inline-flex">

@@ -18,7 +18,7 @@ const DELETE_CONFIRMATION = "DELETE";
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword, refreshProfile } = useAuth();
-  const { language, currency, t } = useLocale();
+  const { language, currency, t, setPreferredLanguage } = useLocale();
   useSubscriptionContext();
 
   const [profileForm, setProfileForm] = useState({
@@ -51,6 +51,7 @@ export const SettingsPage: React.FC = () => {
       setPreferencesError(t("Unable to save company preferences. Please try again."));
       return;
     }
+    setPreferredLanguage(preferences.language);
     await refreshProfile();
     setPreferencesMessage("Preferences saved.");
     window.setTimeout(() => setPreferencesMessage(""), 3000);

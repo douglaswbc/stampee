@@ -1,4 +1,4 @@
--- Stampee upgrade script: fix profiles RLS policy recursion and
+-- Stampfy upgrade script: fix profiles RLS policy recursion and
 -- insecure user_metadata dependency on existing projects.
 -- New projects should use migration.sql instead.
 

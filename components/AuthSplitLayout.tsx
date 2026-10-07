@@ -358,7 +358,7 @@ export const AuthSplitLayout: React.FC<AuthSplitLayoutProps> = ({
         <section className={`relative flex min-h-[100dvh] flex-col ${theme.leftBg} px-5 pb-10 pt-5 sm:px-8 sm:pt-7 lg:px-10 lg:pb-12 xl:px-16`}>
           <header className="flex items-center justify-between gap-4">
             <Link to="/login" className="inline-flex items-center">
-              <img src="/stampee.svg" alt="Stampee" className="h-10 w-auto sm:h-11" />
+              <img src="/stampfy.svg?v=2" alt="Stampfy" className="h-10 w-auto sm:h-11" />
             </Link>
 
             {theme.navLinkLabel && (

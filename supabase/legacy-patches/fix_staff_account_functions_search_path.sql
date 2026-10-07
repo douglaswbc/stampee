@@ -1,4 +1,4 @@
--- Stampee upgrade script: set a stable search_path on staff-account
+-- Stampfy upgrade script: set a stable search_path on staff-account
 -- RPC functions for existing projects.
 -- New projects should use migration.sql instead.
 
