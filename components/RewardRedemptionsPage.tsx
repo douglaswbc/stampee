@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { BadgeCheck, ScanLine, TicketCheck } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BadgeCheck, QrCode, ScanLine, TicketCheck } from 'lucide-react';
 import type { LoyaltyRewardRedemption } from '../types';
 import { cancelLoyaltyRewardCode, fetchStaffLoyaltyRewardRedemptions, validateLoyaltyRewardCode } from '../lib/db/rewards';
 import { useAuth } from './AuthProvider';
 import { useLocale } from './LocaleProvider';
 import { LocalizedTree } from './LocalizedTree';
+import { ScanQrDialog, type ScanDetectionResult } from './ScanQrDialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -36,39 +37,70 @@ export const RewardRedemptionsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [cancelError, setCancelError] = useState('');
   const [notice, setNotice] = useState('');
+  const [isScanOpen, setIsScanOpen] = useState(false);
 
-  const loadRedemptions = async () => {
+  const loadRedemptions = useCallback(async () => {
     setLoading(true);
-    const result = await fetchStaffLoyaltyRewardRedemptions();
-    if (result.ok) {
-      setRedemptions(result.redemptions);
-      setError('');
-    } else {
+    try {
+      const result = await fetchStaffLoyaltyRewardRedemptions();
+      if (result.ok) {
+        setRedemptions(result.redemptions);
+        setError('');
+      } else {
+        setError(t('Unable to load reward codes. Apply the loyalty rewards database patch and try again.'));
+      }
+    } catch {
       setError(t('Unable to load reward codes. Apply the loyalty rewards database patch and try again.'));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }, [t]);
 
-  useEffect(() => { void loadRedemptions(); }, []);
+  useEffect(() => { void loadRedemptions(); }, [loadRedemptions]);
 
-  const handleValidate = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const validateCode = useCallback(async (value: string): Promise<ScanDetectionResult> => {
+    const normalizedCode = value.trim().toUpperCase();
+    if (!normalizedCode) {
+      const message = t('Enter the redemption code.');
+      setError(message);
+      return { ok: false, message };
+    }
+
     setError('');
     setNotice('');
     setValidating(true);
-    const result = await validateLoyaltyRewardCode(code.trim());
-    setValidating(false);
-    if (!result.ok) {
-      setError(t('Unable to process this code. Refresh and try again.'));
-      return;
+    try {
+      const result = await validateLoyaltyRewardCode(normalizedCode);
+      if (!result.ok) {
+        const message = t('Unable to process this code. Refresh and try again.');
+        setError(message);
+        return { ok: false, message };
+      }
+      if (!result.success) {
+        const message = statusMessage(result.error, t);
+        setError(message);
+        return { ok: false, message };
+      }
+
+      setCode('');
+      setNotice(`${t('Reward delivered to')} ${result.customerName}: ${result.rewardName}`);
+      await loadRedemptions();
+      return { ok: true };
+    } catch {
+      const message = t('Unable to process this code. Refresh and try again.');
+      setError(message);
+      return { ok: false, message };
+    } finally {
+      setValidating(false);
     }
-    if (!result.success) {
-      setError(statusMessage(result.error, t));
-      return;
-    }
-    setNotice(`${t('Reward delivered to')} ${result.customerName}: ${result.rewardName}`);
-    await loadRedemptions();
+  }, [loadRedemptions, t]);
+
+  const handleValidate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    await validateCode(code);
   };
+
+  const closeScanner = useCallback(() => setIsScanOpen(false), []);
 
   const handleCancel = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -98,6 +130,12 @@ export const RewardRedemptionsPage: React.FC = () => {
   return (
     <LocalizedTree>
       <div className="min-h-full space-y-6 bg-gray-50/50 p-4 md:h-full md:overflow-y-auto md:p-8">
+        <ScanQrDialog
+          isOpen={isScanOpen}
+          onClose={closeScanner}
+          onDetected={validateCode}
+          purpose="reward"
+        />
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('Loyalty tools')}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">{t('Reward codes')}</h1>
@@ -116,7 +154,12 @@ export const RewardRedemptionsPage: React.FC = () => {
             <form className="space-y-3" onSubmit={handleValidate}>
               <div className="space-y-2">
                 <Label htmlFor="reward-code">{t('Redemption code')}</Label>
-                <Input id="reward-code" autoComplete="off" className="font-mono uppercase" maxLength={40} value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="SF-XXXXXXXXXXXXXXX" required />
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <Input id="reward-code" autoComplete="off" className="font-mono uppercase" maxLength={40} value={code} onChange={event => setCode(event.target.value.toUpperCase())} placeholder="SF-XXXXXXXXXXXXXXX" required />
+                  <Button type="button" variant="outline" className="gap-2 rounded-full" onClick={() => setIsScanOpen(true)} disabled={validating}>
+                    <QrCode size={16} />{t('Scan QR')}
+                  </Button>
+                </div>
               </div>
               {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
               {notice && <p role="status" className="text-sm text-emerald-700">{notice}</p>}

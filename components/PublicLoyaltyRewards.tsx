@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Gift, TicketCheck } from 'lucide-react';
+import { Gift, QrCode, TicketCheck } from 'lucide-react';
 import type { LoyaltyRewardRedemption, PublicLoyaltyReward } from '../types';
 import {
   claimPublicLoyaltyReward,
@@ -10,6 +10,7 @@ import {
 import { useLocale } from './LocaleProvider';
 import { LocalizedTree } from './LocalizedTree';
 import { Button } from './ui/button';
+import { QrCodeDisplay } from './ui/qr-code-display';
 
 interface PublicLoyaltyRewardsProps {
   slug: string;
@@ -37,6 +38,7 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [newCode, setNewCode] = useState<{ code: string; rewardName: string; expiresAt: string; missionName?: string } | null>(null);
+  const [expandedQrId, setExpandedQrId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [rewardsResult, redemptionsResult] = await Promise.all([
@@ -121,6 +123,10 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
             <p className="text-sm font-semibold text-emerald-900">{t('Your reward code')}: {newCode.rewardName}</p>
             {newCode.missionName && <p className="mt-1 text-xs text-emerald-800">{t('Unlocked by mission')}: {newCode.missionName}</p>}
             <p className="mt-2 break-all rounded-lg bg-white px-3 py-2 text-center font-mono text-lg font-bold tracking-[0.12em] text-gray-900">{newCode.code}</p>
+            <div className="mt-3 flex flex-col items-center gap-2 rounded-xl bg-white p-4">
+              <QrCodeDisplay value={newCode.code} label="Reward redemption QR code" className="h-44 w-44" />
+              <p className="text-center text-xs text-emerald-900/75">{t('Show this QR code to the team.')}</p>
+            </div>
             <p className="mt-2 text-xs text-emerald-900/75">{t('Valid until')} {formatDate(newCode.expiresAt, language)}</p>
           </div>
         )}
@@ -173,19 +179,42 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
           <div className="mt-5 border-t border-gray-100 pt-4">
             <h3 className="text-sm font-semibold text-gray-900">{t('Your reward codes')}</h3>
             <ul className="mt-2 space-y-2">
-              {redemptions.map(redemption => (
-                <li key={redemption.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm">
-                  <span>
-                    <span className="block font-medium text-gray-800">{redemption.rewardName}</span>
-                    <span className="font-mono text-xs text-gray-500">{redemption.code}</span>
-                    {redemption.missionName && <span className="mt-0.5 block text-xs text-emerald-700">{t('Unlocked by mission')}: {redemption.missionName}</span>}
-                  </span>
-                  <span className="text-right text-xs text-gray-500">
-                    <span className="block font-semibold">{redemptionStatus(redemption.status, t)}</span>
-                    {redemption.status === 'issued' && <span>{t('Expires')}: {formatDate(redemption.expiresAt, language)}</span>}
-                  </span>
-                </li>
-              ))}
+              {redemptions.map(redemption => {
+                const isQrExpanded = expandedQrId === redemption.id;
+                return (
+                  <li key={redemption.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium text-gray-800">{redemption.rewardName}</span>
+                      <span className="font-mono text-xs text-gray-500">{redemption.code}</span>
+                      {redemption.missionName && <span className="mt-0.5 block text-xs text-emerald-700">{t('Unlocked by mission')}: {redemption.missionName}</span>}
+                    </span>
+                    <span className="shrink-0 text-right text-xs text-gray-500">
+                      <span className="block font-semibold">{redemptionStatus(redemption.status, t)}</span>
+                      {redemption.status === 'issued' && <span>{t('Expires')}: {formatDate(redemption.expiresAt, language)}</span>}
+                    </span>
+                    {redemption.status === 'issued' && (
+                      <div className="basis-full">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-full"
+                          onClick={() => setExpandedQrId(current => current === redemption.id ? null : redemption.id)}
+                        >
+                          <QrCode size={14} className="mr-1.5" />
+                          {isQrExpanded ? t('Hide QR code') : t('Show QR code')}
+                        </Button>
+                        {isQrExpanded && (
+                          <div className="mt-3 flex flex-col items-center gap-2 rounded-xl bg-white p-4">
+                            <QrCodeDisplay value={redemption.code} label="Reward redemption QR code" className="h-40 w-40" />
+                            <p className="text-center text-xs text-gray-500">{t('Show this QR code to the team.')}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}

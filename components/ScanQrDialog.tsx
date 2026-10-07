@@ -19,44 +19,55 @@ interface ScanQrDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onDetected: (value: string) => Promise<ScanDetectionResult> | ScanDetectionResult;
+  purpose?: 'card' | 'reward';
 }
 
-export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onDetected }) => {
+export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onDetected, purpose = 'card' }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const scannerRef = useRef<QrScanner | null>(null);
   const detectingRef = useRef(false);
-  const [status, setStatus] = useState("Point the camera at the QR code.");
+  const [phase, setPhase] = useState<'requesting' | 'scanning' | 'checking'>('requesting');
   const [error, setError] = useState("");
   const [manualValue, setManualValue] = useState("");
-  const isBusy = status === "Requesting camera..." || status === "Checking card...";
+  const isRewardScan = purpose === 'reward';
+  const title = isRewardScan ? 'Scan reward code' : 'Scan card';
+  const manualLabel = isRewardScan ? 'Redemption code' : 'Card ID';
+  const manualPlaceholder = isRewardScan ? 'SF-XXXXXXXXXXXXXXX' : 'Paste full card ID';
+  const manualSubmitLabel = isRewardScan ? 'Validate code' : 'Open Card';
+  const checkingLabel = isRewardScan ? 'Checking reward code...' : 'Checking card...';
+  const validationError = isRewardScan
+    ? 'Unable to validate this reward code right now.'
+    : 'Unable to validate this card right now.';
+  const isBusy = phase === 'requesting' || phase === 'checking';
 
   useEffect(() => {
     if (!isOpen) return;
     detectingRef.current = false;
     setError("");
-    setStatus("Requesting camera...");
+    setManualValue("");
+    setPhase('requesting');
 
     let active = true;
     const handleDetectedValue = async (value: string) => {
       if (!active || detectingRef.current) return;
       detectingRef.current = true;
       setError("");
-      setStatus("Checking card...");
+      setPhase('checking');
 
       try {
         const result = await onDetected(value);
         if (!active) return;
         if (!result.ok) {
           setError(result.message);
-          setStatus("Scanning...");
+          setPhase('scanning');
           detectingRef.current = false;
           return;
         }
         onClose();
       } catch {
         if (!active) return;
-        setError("Unable to validate this card right now.");
-        setStatus("Scanning...");
+        setError(validationError);
+        setPhase('scanning');
         detectingRef.current = false;
       }
     };
@@ -83,7 +94,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
       scannerRef.current = scanner;
       await scanner.start();
       if (!active) return;
-      setStatus("Scanning...");
+      setPhase('scanning');
     };
 
     startScanner().catch(() => {
@@ -96,26 +107,26 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
       scannerRef.current?.destroy();
       scannerRef.current = null;
     };
-  }, [isOpen, onDetected, onClose]);
+  }, [isOpen, onDetected, onClose, validationError]);
 
   const handleManualSubmit = async () => {
     if (!manualValue.trim() || detectingRef.current) return;
     detectingRef.current = true;
     setError("");
-    setStatus("Checking card...");
+    setPhase('checking');
 
     try {
       const result = await onDetected(manualValue.trim());
       if (!result.ok) {
         setError(result.message);
-        setStatus("Scanning...");
+        setPhase('scanning');
         detectingRef.current = false;
         return;
       }
       onClose();
     } catch {
-      setError("Unable to validate this card right now.");
-      setStatus("Scanning...");
+      setError(validationError);
+      setPhase('scanning');
       detectingRef.current = false;
     }
   };
@@ -128,7 +139,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
           <div className="border-b border-white/10 bg-black px-5 pb-5 pt-8 sm:px-6 lg:px-7">
             <DialogHeader className="relative space-y-4 text-left">
               <DialogTitle className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                Scan card
+                {title}
               </DialogTitle>
               <div className="flex flex-wrap items-center gap-3">
                 <div className={cn(
@@ -143,7 +154,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
                     "h-2 w-2 rounded-full",
                     error ? "bg-white" : isBusy ? "bg-white/80" : "bg-white"
                   )} />
-                  {status}
+                  {phase === 'requesting' ? 'Requesting camera...' : phase === 'checking' ? checkingLabel : 'Scanning...'}
                 </div>
               </div>
             </DialogHeader>
@@ -178,13 +189,13 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
 
             <div className="rounded-[26px] border border-white/10 bg-white/[0.04] p-4 shadow-[0_18px_45px_-34px_rgba(0,0,0,0.5)] sm:p-5">
               <div className="mb-3">
-                <Label className="text-white">Card ID</Label>
+                <Label className="text-white">{manualLabel}</Label>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Input
                   value={manualValue}
                   onChange={(event) => setManualValue(event.target.value)}
-                  placeholder="Paste full card ID"
+                  placeholder={manualPlaceholder}
                   className="h-12 border-white/10 bg-black/25 font-mono text-sm text-white placeholder:text-white/35"
                 />
                 <Button
@@ -193,7 +204,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
                   disabled={!manualValue.trim() || detectingRef.current}
                   className="h-12 rounded-full border-white/15 bg-white/8 px-6 text-white hover:bg-white/14"
                 >
-                  Open Card
+                  {manualSubmitLabel}
                 </Button>
               </div>
             </div>
