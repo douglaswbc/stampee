@@ -8,6 +8,8 @@ import { Template, Transaction } from '../types';
 import { cn, resolveHexAndOpacity, hexToRgba } from '../lib/utils';
 import { QrCode, History, Gift, Plus, X, Minus, CreditCard, Globe } from 'lucide-react';
 import { siFacebook, siInstagram, siTiktok, siX, siYoutube } from 'simple-icons/icons';
+import { LocalizedTree } from './LocalizedTree';
+import { useLocale } from './LocaleProvider';
 
 const LottiePlayer = lazy(() => import('lottie-react'));
 
@@ -46,6 +48,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
     onStampAddTap,
     onStampRemoveTap
 }) => {
+    const { language } = useLocale();
   const [stamps, setStamps] = useState<number>(0);
   const [showReward, setShowReward] = useState<boolean>(false);
   const [loadingReward, setLoadingReward] = useState<boolean>(false);
@@ -304,6 +307,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
   };
 
   return (
+    <LocalizedTree>
     <div 
       className={`relative w-full h-full overflow-hidden font-sans select-none ${className}`}
       style={{ backgroundColor: bgHex }}
@@ -635,7 +639,7 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
                                                 </div>
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-semibold text-gray-900">{tx.title}</span>
-                                                    <span className="text-xs text-gray-400">{tx.date}</span>
+                                                    <span className="text-xs text-gray-400">{Number.isFinite(tx.timestamp) ? new Date(tx.timestamp).toLocaleString(language, { dateStyle: 'medium', timeStyle: 'short' }) : tx.date}</span>
                                                     {tx.remarks && (
                                                         <span className="text-xs text-gray-500 mt-1 italic">"{tx.remarks}"</span>
                                                     )}
@@ -693,5 +697,6 @@ export const LoyaltyCard: React.FC<LoyaltyCardProps> = ({
         />
       )}
     </div>
+    </LocalizedTree>
   );
 };

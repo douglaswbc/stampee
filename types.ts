@@ -129,6 +129,8 @@ export type AccountStatus = 'unverified' | 'verified';
 export type UserRole = 'owner' | 'staff';
 export type AccessStatus = 'active' | 'disabled';
 export type SubscriptionTier = 'free' | 'pro';
+export type InterfaceLanguage = 'pt-BR' | 'es' | 'en';
+export type BusinessCurrency = 'BRL' | 'USD' | 'EUR' | 'MXN' | 'ARS' | 'CLP' | 'COP' | 'PEN' | 'UYU';
 
 export const TIER_LIMITS = {
   free: { campaigns: Infinity, issuedCards: Infinity, staff: Infinity },
@@ -147,4 +149,6 @@ export interface User {
   tier: SubscriptionTier;
   tierExpiresAt?: string;
   createdAt: string;
+  interfaceLanguage?: InterfaceLanguage;
+  currencyCode?: BusinessCurrency;
 }

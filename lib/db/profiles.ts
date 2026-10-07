@@ -13,6 +13,8 @@ export const profileToUser = (row: Record<string, unknown>): User => ({
   tier: (row.tier as 'free' | 'pro') ?? 'free',
   tierExpiresAt: row.tier_expires_at as string | undefined,
   createdAt: row.created_at as string,
+  interfaceLanguage: (row.interface_language as User['interfaceLanguage']) ?? 'pt-BR',
+  currencyCode: (row.currency_code as User['currencyCode']) ?? 'BRL',
 });
 
 export type ProfileFetchResult = {
@@ -73,6 +75,19 @@ export async function updateProfile(
     .update(updates)
     .eq('id', userId);
   if (error) return { ok: false, error: 'Unable to update this profile right now. Please try again.' };
+  return { ok: true };
+}
+
+export async function updateCompanyLocalePreferences(
+  ownerId: string,
+  updates: { interface_language: NonNullable<User['interfaceLanguage']>; currency_code: NonNullable<User['currencyCode']> }
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('profiles')
+    .update(updates)
+    .eq('id', ownerId)
+    .eq('role', 'owner');
+  if (error) return { ok: false, error: 'Unable to save company preferences. Please apply the company locale database patch.' };
   return { ok: true };
 }
 

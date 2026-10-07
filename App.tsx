@@ -8,6 +8,7 @@ import { Lock } from 'lucide-react';
 import { toStoredTemplate, fromStoredTemplate } from './lib/templateSerialization';
 import { cn, hexToRgba, resolveHexAndOpacity } from './lib/utils';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+import { LocaleProvider } from './components/LocaleProvider';
 import { RequireAuth } from './components/RequireAuth';
 import { RequireRole } from './components/RequireRole';
 import { VerifyBanner } from './components/VerifyBanner';
@@ -717,11 +718,13 @@ const AppRoutes: React.FC = () => {
 const App: React.FC = () => {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <SeoManager />
-        <Analytics />
-        <AppRoutes />
-      </BrowserRouter>
+      <LocaleProvider>
+        <BrowserRouter>
+          <SeoManager />
+          <Analytics />
+          <AppRoutes />
+        </BrowserRouter>
+      </LocaleProvider>
     </AuthProvider>
   );
 };

@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 import { useSubscriptionContext } from './SubscriptionContext';
+import { useLocale } from './LocaleProvider';
 
 interface SidebarProps {
   className?: string;
@@ -36,13 +37,14 @@ const PlanBadge: React.FC = () => {
     cardLimit,
   } = useSubscriptionContext();
   const { isStaff } = useAuth();
+  const { t } = useLocale();
   if (isStaff) return null;
 
   if (isProTier) {
     return (
       <div className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 px-3 py-2 text-xs">
         <Crown size={14} className="text-amber-500" />
-        <span className="font-semibold text-amber-700">Pro Plan</span>
+        <span className="font-semibold text-amber-700">{t('Pro Plan')}</span>
       </div>
     );
   }
@@ -50,13 +52,13 @@ const PlanBadge: React.FC = () => {
   return (
     <div className="rounded-lg border border-border/80 bg-muted/30 px-3 py-2.5 text-xs space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="font-semibold text-foreground">Beta Plan</span>
+        <span className="font-semibold text-foreground">{t('Beta Plan')}</span>
         <Sparkles size={12} className="text-muted-foreground" />
       </div>
       <div className="flex items-center gap-3 text-muted-foreground">
-        <span>{campaignCount}/{campaignLimit === Infinity ? '∞' : campaignLimit} campaigns</span>
+        <span>{campaignCount}/{campaignLimit === Infinity ? '∞' : campaignLimit} {t('campaigns')}</span>
         <span className="text-border">|</span>
-        <span>{issuedCardCount}/{cardLimit === Infinity ? '∞' : cardLimit} cards</span>
+        <span>{issuedCardCount}/{cardLimit === Infinity ? '∞' : cardLimit} {t('cards')}</span>
       </div>
     </div>
   );
@@ -65,6 +67,7 @@ const PlanBadge: React.FC = () => {
 export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onScanQr }) => {
   const navigate = useNavigate();
   const { currentUser, currentOwner, isStaff, logout } = useAuth();
+  const { t } = useLocale();
 
   return (
     <div className="flex h-full flex-col py-8">
@@ -87,7 +90,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
                   className="w-full justify-start gap-2"
                 >
                   <item.icon size={20} />
-                  {item.label}
+                  {t(item.label)}
                 </Button>
               )}
             </NavLink>
@@ -102,7 +105,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
               }}
             >
               <QrCode size={20} />
-              Scan QR Code
+              {t('Scan QR Code')}
             </Button>
           )}
         </div>
@@ -113,7 +116,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
           <div className="rounded-lg border border-border/80 bg-card px-3 py-3 text-xs text-muted-foreground shadow-subtle">
               <div className="font-semibold text-foreground">{currentUser.businessName}</div>
               <div className="font-mono">@{currentOwner?.slug ?? "staff"}</div>
-              {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">Staff Access</div>}
+              {isStaff && <div className="text-[10px] uppercase tracking-widest mt-1">{t('Staff Access')}</div>}
           </div>
          )}
          <Button
@@ -125,7 +128,7 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
             }}
          >
             <LogOut size={20} />
-            Log Out
+            {t('Log Out')}
          </Button>
          <div className="px-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
             v0.5

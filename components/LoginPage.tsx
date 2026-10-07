@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { LocalizedTree } from './LocalizedTree';
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { AuthSplitLayout } from "./AuthSplitLayout";
@@ -80,6 +81,7 @@ export const LoginPage: React.FC = () => {
   const isDisabled = busy || loading;
 
   return (
+    <LocalizedTree>
     <AuthSplitLayout
       title="Welcome back"
       subtitle="Log in to run campaigns, issue digital cards, and track loyalty activity from one place."
@@ -164,5 +166,6 @@ export const LoginPage: React.FC = () => {
         )}
       </form>
     </AuthSplitLayout>
+    </LocalizedTree>
   );
 };

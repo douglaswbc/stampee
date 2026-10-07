@@ -1,20 +1,24 @@
 import React from 'react';
 import { CheckCircle2, Clock3, Gift, Sparkles } from 'lucide-react';
 import type { LoyaltyMission } from '../types';
+import { useLocale } from './LocaleProvider';
+import { LocalizedTree } from './LocalizedTree';
 
 interface MissionProgressListProps {
   missions: LoyaltyMission[];
 }
 
-const formatMissionDate = (value: string) => new Intl.DateTimeFormat(undefined, {
+const formatMissionDate = (value: string, locale: string) => new Intl.DateTimeFormat(locale, {
   dateStyle: 'medium',
   timeStyle: 'short',
 }).format(new Date(value));
 
 export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missions }) => {
+  const { language } = useLocale();
   if (!missions.length) return null;
 
   return (
+    <LocalizedTree>
     <section className="mx-4 mb-6 w-full max-w-xl rounded-3xl border border-black/5 bg-white/90 p-5 shadow-[0_20px_60px_-42px_rgba(15,23,42,0.35)] backdrop-blur md:mx-0 md:p-6">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
@@ -65,7 +69,7 @@ export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missio
                 {mission.availableRewards ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><CheckCircle2 size={14} />Reward ready</span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500"><Clock3 size={14} />Ends {formatMissionDate(mission.endsAt)}</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">Ends {formatMissionDate(mission.endsAt, language)}</span>
                 )}
               </div>
               {mission.availableRewards ? <p className="mt-2 text-xs text-gray-500">Show this card to the team to claim your reward.</p> : null}
@@ -77,5 +81,6 @@ export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missio
         })}
       </div>
     </section>
+    </LocalizedTree>
   );
 };

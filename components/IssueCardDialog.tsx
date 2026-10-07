@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { LocalizedTree } from './LocalizedTree';
 import { Customer, IssuedCard, Template, Transaction } from '../types';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
@@ -150,6 +151,7 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
     };
 
     return (
+        <LocalizedTree>
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="w-[calc(100vw-1rem)] max-w-[500px] h-[min(650px,calc(100vh-1rem))] sm:h-[650px] flex flex-col p-0 gap-0 overflow-hidden transition-all">
                 {/* Header */}
@@ -303,5 +305,6 @@ export const IssueCardDialog: React.FC<IssueCardDialogProps> = ({
                 </div>
             </DialogContent>
         </Dialog>
+        </LocalizedTree>
     );
 };

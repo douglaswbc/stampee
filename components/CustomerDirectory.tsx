@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "./ui/label";
 import { upsertCustomer } from '../lib/db/customers';
 import { useAuth } from './AuthProvider';
+import { LocalizedTree } from './LocalizedTree';
 
 interface CustomerDirectoryProps {
   customers: Customer[];
@@ -83,6 +84,7 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
   };
 
   return (
+    <LocalizedTree>
     <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
@@ -193,5 +195,6 @@ export const CustomerDirectory: React.FC<CustomerDirectoryProps> = ({ customers,
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Gift, History, User, ChevronLeft, Minus, Lock, CheckCircle, RefreshCcw, ShieldCheck, Clock3 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { fetchCardMissions, redeemMissionReward } from '../lib/db/missions';
+import { LocalizedTree } from './LocalizedTree';
+import { useLocale } from './LocaleProvider';
 
 interface KioskModeProps {
   customer: Customer;
@@ -74,8 +76,8 @@ const formatKioskAction = (type: Transaction['type']) => {
     }
 };
 
-const formatKioskTimestamp = (timestamp: number) =>
-    new Date(timestamp).toLocaleString(undefined, {
+const formatKioskTimestamp = (timestamp: number, locale: string) =>
+    new Date(timestamp).toLocaleString(locale, {
         month: 'short',
         day: 'numeric',
         hour: 'numeric',
@@ -97,6 +99,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   onMissionCardUpdate,
   mutationBusy = false
 }) => {
+  const { language } = useLocale();
   const [isAnimating, setIsAnimating] = useState(false);
   const [actionError, setActionError] = useState("");
   const [missions, setMissions] = useState<LoyaltyMission[]>([]);
@@ -133,7 +136,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
     setRedeemingCompletionId(completionId);
     setMissionError("");
     const result = await redeemMissionReward(completionId);
-    if (!result.ok) {
+    if ('error' in result) {
       setMissionError(result.error === 'Mission reward was already redeemed.'
         ? 'This mission reward was already redeemed.'
         : result.error?.includes('No active card has enough space')
@@ -261,6 +264,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   };
 
   return (
+    <LocalizedTree>
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#f5f4ef] animate-fade-in overscroll-y-contain md:overflow-hidden">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-[-8rem] top-[-8rem] h-72 w-72 rounded-full bg-[#d8ef5a]/45 blur-3xl" />
@@ -631,7 +635,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                                         <div className="flex flex-wrap items-center gap-2">
                                             <p className="font-semibold text-[#1d1d1f]">{formatKioskAction(entry.type)}</p>
                                             <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-[#6e6e73] ring-1 ring-black/5">
-                                                {formatKioskTimestamp(entry.timestamp)}
+                                                {formatKioskTimestamp(entry.timestamp, language)}
                                             </span>
                                         </div>
                                         <p className="mt-1 text-sm text-[#5f6368]">
@@ -722,5 +726,6 @@ export const KioskMode: React.FC<KioskModeProps> = ({
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

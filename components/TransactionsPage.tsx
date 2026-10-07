@@ -8,6 +8,8 @@ import {
 import { Customer, Transaction } from '../types';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
+import { LocalizedTree } from './LocalizedTree';
+import { useLocale } from './LocaleProvider';
 
 interface TransactionsPageProps {
   customers: Customer[];
@@ -27,6 +29,7 @@ const escapeCsvValue = (value: string | number | undefined) => {
 };
 
 export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers }) => {
+  const { language } = useLocale();
   const PAGE_SIZE = 50;
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("");
@@ -62,8 +65,12 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
               tx.cardId.toLowerCase().includes(lowerQuery) ||
               (tx.remarks && tx.remarks.toLowerCase().includes(lowerQuery));
 
-          const matchesDate = dateFilter 
-              ? new Date(tx.timestamp).toLocaleDateString() === new Date(dateFilter).toLocaleDateString()
+          const matchesDate = dateFilter
+              ? (() => {
+                  const date = new Date(tx.timestamp);
+                  const localDate = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
+                  return localDate === dateFilter;
+                })()
               : true;
 
           return matchesSearch && matchesDate;
@@ -159,6 +166,7 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
   };
 
   return (
+    <LocalizedTree>
     <div className="p-4 md:p-8 space-y-6 animate-fade-in h-full flex flex-col bg-gray-50/50">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -237,8 +245,8 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
                         visibleTransactions.map(tx => (
                             <TableRow key={tx.id} className="hover:bg-muted/30 transition-colors">
                                 <TableCell className="font-mono text-xs text-muted-foreground">
-                                    <div className="font-medium text-foreground">{tx.date.split(',')[0]}</div>
-                                    <div>{tx.date.split(',')[1]}</div>
+                                    <div className="font-medium text-foreground">{new Date(tx.timestamp).toLocaleDateString(language, { dateStyle: 'medium' })}</div>
+                                    <div>{new Date(tx.timestamp).toLocaleTimeString(language, { hour: 'numeric', minute: '2-digit' })}</div>
                                 </TableCell>
                                 <TableCell>
                                     <div className="font-medium">{tx.customerName}</div>
@@ -291,5 +299,6 @@ export const TransactionsPage: React.FC<TransactionsPageProps> = ({ customers })
             )}
         </div>
     </div>
+    </LocalizedTree>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { LocalizedTree } from './LocalizedTree';
 import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { AuthLayout } from "./AuthLayout";
@@ -69,6 +70,7 @@ export const ForgotPasswordPage: React.FC = () => {
   }
 
   return (
+    <LocalizedTree>
     <AuthLayout
       title="Forgot your password?"
       subtitle="Enter your account email and we'll send you a reset link."
@@ -117,5 +119,6 @@ export const ForgotPasswordPage: React.FC = () => {
         </p>
       </form>
     </AuthLayout>
+    </LocalizedTree>
   );
 };

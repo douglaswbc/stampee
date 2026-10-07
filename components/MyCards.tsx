@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LocalizedTree } from './LocalizedTree';
 import { Template } from '../types';
 import { Button } from './ui/button';
 import { PlusCircle, Edit2, Trash2, CreditCard, Play, QrCode, Power, Copy, ExternalLink } from 'lucide-react';
@@ -224,6 +225,7 @@ export const MyCards: React.FC<MyCardsProps> = ({
   };
 
   return (
+    <LocalizedTree>
     <div className="p-4 md:p-8 space-y-8 animate-fade-in h-full overflow-y-auto bg-gray-50/50">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
@@ -321,5 +323,6 @@ export const MyCards: React.FC<MyCardsProps> = ({
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

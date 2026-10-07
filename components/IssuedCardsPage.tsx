@@ -23,6 +23,7 @@ import { ScanDetectionResult, ScanQrDialog } from './ScanQrDialog';
 import { insertIssuedCard, deleteIssuedCard, insertTransaction, recordCardAction, inspectScannedCard } from '../lib/db/issuedCards';
 import { upsertCustomer } from '../lib/db/customers';
 import { useSubscriptionContext } from './SubscriptionContext';
+import { LocalizedTree } from './LocalizedTree';
 
 interface IssuedCardsPageProps {
   customers: Customer[];
@@ -79,7 +80,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
       }
 
       const result = await recordCardAction(cardId, newTransactions[0]);
-      if (!result.ok) throw new Error(result.error);
+      if ('error' in result) throw new Error(result.error);
 
       const nextCard = {
         ...existingCard,
@@ -386,6 +387,7 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
   };
 
   return (
+    <LocalizedTree>
     <div className="min-h-full space-y-6 bg-gray-50/50 p-4 md:h-full md:overflow-y-auto md:p-8">
 
       {activeKioskData && (
@@ -679,5 +681,6 @@ export const IssuedCardsPage: React.FC<IssuedCardsPageProps> = ({ customers, cam
         )}
       </div>
     </div>
+    </LocalizedTree>
   );
 };

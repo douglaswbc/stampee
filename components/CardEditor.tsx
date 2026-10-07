@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { LocalizedTree } from './LocalizedTree';
 import { Template } from '../types';
 import { LoyaltyCard } from './LoyaltyCard';
 import { Button } from './ui/button';
@@ -616,6 +617,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
   };
 
   return (
+    <LocalizedTree>
     <div className="min-h-[100dvh] bg-gray-50 font-sans lg:flex lg:min-h-screen">
       <div className="hidden lg:static lg:order-2 lg:flex lg:flex-1 lg:items-center lg:justify-center lg:border-b-0 lg:bg-gray-100 lg:p-12">
         <div className="relative mx-auto w-full max-w-[430px] lg:max-w-[380px]">
@@ -1187,5 +1189,6 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

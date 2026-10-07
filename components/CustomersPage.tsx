@@ -11,6 +11,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { LocalizedTree } from './LocalizedTree';
 import {
   Dialog,
   DialogContent,
@@ -294,6 +295,7 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
   );
 
   return (
+    <LocalizedTree>
     <div className="p-8 space-y-6 animate-fade-in h-full flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -537,5 +539,6 @@ export const CustomersPage: React.FC<CustomersPageProps> = ({ customers, campaig
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

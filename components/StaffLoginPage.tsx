@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { LocalizedTree } from './LocalizedTree';
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { AuthSplitLayout } from "./AuthSplitLayout";
@@ -70,6 +71,7 @@ export const StaffLoginPage: React.FC = () => {
   const hasPrefilledOrgId = Boolean(searchParams.get("id"));
 
   return (
+    <LocalizedTree>
     <AuthSplitLayout
       title="Staff portal"
       subtitle="Log in with your email, PIN, and Org ID to issue cards, scan kiosk traffic, and keep the line moving."
@@ -154,5 +156,6 @@ export const StaffLoginPage: React.FC = () => {
         </div>
       </form>
     </AuthSplitLayout>
+    </LocalizedTree>
   );
 };

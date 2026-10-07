@@ -8,12 +8,17 @@ import { useAuth } from "./AuthProvider";
 import { buildStaffPortalUrl } from "../lib/links";
 import { useNavigate } from "react-router-dom";
 import { useSubscriptionContext } from "./SubscriptionContext";
+import { useLocale } from "./LocaleProvider";
+import { BUSINESS_CURRENCIES, formatCurrency, INTERFACE_LANGUAGES } from "../lib/i18n";
+import { updateCompanyLocalePreferences } from "../lib/db/profiles";
+import { LocalizedTree } from "./LocalizedTree";
 
 const DELETE_CONFIRMATION = "DELETE";
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
-  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword } = useAuth();
+  const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword, refreshProfile } = useAuth();
+  const { language, currency, t } = useLocale();
   useSubscriptionContext();
 
   const [profileForm, setProfileForm] = useState({
@@ -24,6 +29,32 @@ export const SettingsPage: React.FC = () => {
   const [profileSuccess, setProfileSuccess] = useState("");
   const [profileError, setProfileError] = useState("");
   const [profileBusy, setProfileBusy] = useState(false);
+  const [preferences, setPreferences] = useState({ language, currency });
+  const [preferencesBusy, setPreferencesBusy] = useState(false);
+  const [preferencesMessage, setPreferencesMessage] = useState("");
+  const [preferencesError, setPreferencesError] = useState("");
+
+  useEffect(() => setPreferences({ language, currency }), [language, currency]);
+
+  const handlePreferencesSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!currentOwner || currentUser?.role !== "owner") return;
+    setPreferencesBusy(true);
+    setPreferencesMessage("");
+    setPreferencesError("");
+    const result = await updateCompanyLocalePreferences(currentOwner.id, {
+      interface_language: preferences.language,
+      currency_code: preferences.currency,
+    });
+    setPreferencesBusy(false);
+    if (!result.ok) {
+      setPreferencesError(t("Unable to save company preferences. Please try again."));
+      return;
+    }
+    await refreshProfile();
+    setPreferencesMessage("Preferences saved.");
+    window.setTimeout(() => setPreferencesMessage(""), 3000);
+  };
 
   useEffect(() => {
     setProfileForm({
@@ -166,11 +197,42 @@ export const SettingsPage: React.FC = () => {
   };
 
   return (
+    <LocalizedTree>
     <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-fade-in h-full overflow-y-auto flex flex-col bg-gray-50/50">
       <div className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-        <p className="text-sm text-muted-foreground">Manage your profile, password, team, and account.</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">{t("Settings")}</h1>
+        <p className="text-sm text-muted-foreground">{t("Manage your profile, password, team, and account.")}</p>
       </div>
+
+      <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
+        <div>
+          <h2 className="text-lg md:text-xl font-semibold">{t("Company preferences")}</h2>
+          <p className="text-sm text-muted-foreground">{t("Choose the language used by the team and the company currency for future monetary reports.")}</p>
+        </div>
+        <form className="grid gap-4 sm:grid-cols-2" onSubmit={handlePreferencesSave}>
+          <div className="space-y-1.5">
+            <Label htmlFor="company-language">{t("Interface language")}</Label>
+            <select id="company-language" value={preferences.language} onChange={event => setPreferences(current => ({ ...current, language: event.target.value as typeof current.language }))} className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm">
+              {INTERFACE_LANGUAGES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="company-currency">{t("Company currency")}</Label>
+            <select id="company-currency" value={preferences.currency} onChange={event => setPreferences(current => ({ ...current, currency: event.target.value as typeof current.currency }))} className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm">
+              {BUSINESS_CURRENCIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground">{t("Currency is ready for future monetary features; current loyalty activity does not record sales amounts.")}</p>
+            <p className="text-xs text-muted-foreground">{t("Currency preview")}: {formatCurrency(1234.56, preferences.currency, preferences.language)}</p>
+          </div>
+          {preferencesError && <p role="alert" className="text-sm text-destructive sm:col-span-2">{preferencesError}</p>}
+          {preferencesMessage && <p role="status" className="text-sm text-emerald-700 sm:col-span-2">{t(preferencesMessage)}</p>}
+          <div className="sm:col-span-2">
+            <Button type="submit" disabled={preferencesBusy || currentUser?.role !== "owner"}>
+              <span>{preferencesBusy ? t("Saving...") : t("Save preferences")}</span>
+            </Button>
+          </div>
+        </form>
+      </section>
 
       {/* Edit Profile */}
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">
@@ -650,5 +712,6 @@ export const SettingsPage: React.FC = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </LocalizedTree>
   );
 };

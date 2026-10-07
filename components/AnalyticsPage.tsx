@@ -4,6 +4,8 @@ import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Customer, IssuedCard, Template, Transaction } from "../types";
+import { LocalizedTree } from './LocalizedTree';
+import { useLocale } from './LocaleProvider';
 import { resolveCardTemplate } from "../lib/templateSerialization";
 import {
   Activity,
@@ -38,11 +40,11 @@ type CampaignStatsGroup = {
 const DEFAULT_DAY_COUNT = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+const formatNumber = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 
-const formatPercent = (value: number) =>
-  new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+const formatPercent = (value: number, locale: string) =>
+  new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 
 const toDateInputValue = (date: Date) => {
   const year = date.getFullYear();
@@ -75,16 +77,17 @@ const getDateKey = (date: Date) =>
 const isTimestampInRange = (timestamp: number | undefined, start: number, end: number) =>
   typeof timestamp === "number" && timestamp >= start && timestamp <= end;
 
-const formatDateRangeLabel = (startDate: string, endDate: string) => {
+const formatDateRangeLabel = (startDate: string, endDate: string, locale: string) => {
   const start = parseDateInputToTimestamp(startDate);
   const end = parseDateInputToTimestamp(endDate);
   if (start === null || end === null) return "Custom range";
-  const startLabel = new Date(start).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  const endLabel = new Date(end).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const startLabel = new Date(start).toLocaleDateString(locale, { month: "short", day: "numeric" });
+  const endLabel = new Date(end).toLocaleDateString(locale, { month: "short", day: "numeric" });
   return `${startLabel} - ${endLabel}`;
 };
 
 export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaigns }) => {
+  const { language } = useLocale();
   const [startDate, setStartDate] = useState(() => {
     const start = new Date();
     start.setDate(start.getDate() - (DEFAULT_DAY_COUNT - 1));
@@ -127,7 +130,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
     return Math.floor((end.getTime() - start.getTime()) / DAY_MS) + 1;
   }, [rangeStart, rangeEnd]);
 
-  const rangeLabel = useMemo(() => formatDateRangeLabel(startDate, endDate), [startDate, endDate]);
+  const rangeLabel = useMemo(() => formatDateRangeLabel(startDate, endDate, language), [startDate, endDate, language]);
   const allCards = useMemo(() => customers.flatMap((c) => c.cards), [customers]);
   const filteredCards = useMemo(() => {
     return allCards.filter((card) =>
@@ -182,7 +185,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
       const date = new Date(start);
       date.setDate(start.getDate() + i);
       days.push({
-        label: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        label: date.toLocaleDateString(language, { month: "short", day: "numeric" }),
         stampAdds: 0,
         redemptions: 0,
         total: 0
@@ -210,7 +213,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
     });
 
     return days;
-  }, [allCards, rangeStart, rangeEnd]);
+  }, [allCards, rangeStart, rangeEnd, language]);
 
   const progressDistribution = useMemo(() => {
     const buckets = {
@@ -317,6 +320,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
     distributionTotal === 0 ? 0 : (value / distributionTotal) * 100;
 
   return (
+    <LocalizedTree>
     <div className="h-full overflow-y-auto flex flex-col space-y-8 bg-background p-6 md:p-8 animate-fade-in">
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
@@ -383,7 +387,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatNumber(filteredCustomerCount)}</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatNumber(filteredCustomerCount, language)}</div>
             <p className="mt-1 text-xs text-muted-foreground">Customers with activity in selected range</p>
           </CardContent>
         </Card>
@@ -394,9 +398,9 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <CreditCard className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.issued)}</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.issued, language)}</div>
             <p className="mt-1 text-xs text-muted-foreground">
-              {formatNumber(totals.active)} active | {formatNumber(totals.redeemed)} redeemed in range
+              {formatNumber(totals.active, language)} active | {formatNumber(totals.redeemed, language)} redeemed in range
             </p>
           </CardContent>
         </Card>
@@ -407,7 +411,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <BadgeCheck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatPercent(totals.redemptionRate)}%</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatPercent(totals.redemptionRate, language)}%</div>
             <p className="mt-1 text-xs text-muted-foreground">Completed cycles in selected range</p>
           </CardContent>
         </Card>
@@ -418,7 +422,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <Sparkles className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatPercent(totals.avgStamps)}</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatPercent(totals.avgStamps, language)}</div>
             <p className="mt-1 text-xs text-muted-foreground">Momentum across active cards</p>
           </CardContent>
         </Card>
@@ -429,7 +433,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.readyToRedeem)}</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.readyToRedeem, language)}</div>
             <p className="mt-1 text-xs text-muted-foreground">Cards that hit the reward threshold</p>
           </CardContent>
         </Card>
@@ -440,7 +444,7 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.active)}</div>
+            <div className="text-3xl font-semibold tracking-tight">{formatNumber(totals.active, language)}</div>
             <p className="mt-1 text-xs text-muted-foreground">Currently collecting stamps in selected range</p>
           </CardContent>
         </Card>
@@ -514,19 +518,19 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">0%</span>
-                <span className="font-medium">{formatNumber(progressDistribution.zero)}</span>
+                <span className="font-medium">{formatNumber(progressDistribution.zero, language)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">1-49%</span>
-                <span className="font-medium">{formatNumber(progressDistribution.low)}</span>
+                <span className="font-medium">{formatNumber(progressDistribution.low, language)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">50-99%</span>
-                <span className="font-medium">{formatNumber(progressDistribution.mid)}</span>
+                <span className="font-medium">{formatNumber(progressDistribution.mid, language)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Completed</span>
-                <span className="font-medium">{formatNumber(progressDistribution.full)}</span>
+                <span className="font-medium">{formatNumber(progressDistribution.full, language)}</span>
               </div>
             </div>
           </CardContent>
@@ -558,10 +562,10 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="rounded-md border border-border/80 bg-card px-2 py-1">
-                      Avg stamps {formatPercent(campaign.avgStamps)}
+                      Avg stamps {formatPercent(campaign.avgStamps, language)}
                     </span>
                     <span className="rounded-md border border-border/80 bg-card px-2 py-1">
-                      {formatPercent(campaign.completionRate)}% redeemed
+                      {formatPercent(campaign.completionRate, language)}% redeemed
                     </span>
                   </div>
                 </div>
@@ -583,5 +587,6 @@ export const AnalyticsPage: React.FC<AnalyticsPageProps> = ({ customers, campaig
         </CardContent>
       </Card>
     </div>
+    </LocalizedTree>
   );
 };

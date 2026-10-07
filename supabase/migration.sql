@@ -19,6 +19,8 @@ create table if not exists public.profiles (
   status text not null default 'unverified' check (status in ('unverified', 'verified')),
   access text not null default 'active' check (access in ('active', 'disabled')),
   tier text not null default 'free' check (tier in ('free', 'pro')),
+  interface_language text not null default 'pt-BR' check (interface_language in ('pt-BR', 'es', 'en')),
+  currency_code text not null default 'BRL' check (currency_code in ('BRL', 'USD', 'EUR', 'MXN', 'ARS', 'CLP', 'COP', 'PEN', 'UYU')),
   tier_expires_at timestamptz,
   created_at timestamptz not null default now()
 );
@@ -1810,3 +1812,28 @@ end;
 $$ language plpgsql security definer
 set search_path = public;
 grant execute on function public.get_public_card(text, uuid) to anon, authenticated;
+-- Adds company-wide interface language and currency preferences.
+alter table public.profiles
+  add column if not exists interface_language text not null default 'pt-BR',
+  add column if not exists currency_code text not null default 'BRL';
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.profiles'::regclass
+      and conname = 'profiles_interface_language_check'
+  ) then
+    alter table public.profiles
+      add constraint profiles_interface_language_check
+      check (interface_language in ('pt-BR', 'es', 'en'));
+  end if;
+
+end;
+$$;
+
+alter table public.profiles
+  drop constraint if exists profiles_currency_code_check;
+alter table public.profiles
+  add constraint profiles_currency_code_check
+  check (currency_code in ('BRL', 'USD', 'EUR', 'MXN', 'ARS', 'CLP', 'COP', 'PEN', 'UYU'));

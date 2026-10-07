@@ -7,6 +7,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { cn } from "../lib/utils";
+import { LocalizedTree } from "./LocalizedTree";
 
 QrScanner.WORKER_PATH = QrScannerWorkerPath;
 
@@ -120,6 +121,7 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
   };
 
   return (
+    <LocalizedTree>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="h-[100dvh] w-screen max-w-none rounded-none border-0 bg-[#0d1117] p-0 text-white sm:h-[100dvh] sm:max-w-none md:h-[100dvh] lg:h-auto lg:max-w-[720px] lg:rounded-[32px] lg:border lg:border-white/10 lg:bg-[#0d1117]">
         <div className="flex h-full flex-col overflow-hidden">
@@ -209,5 +211,6 @@ export const ScanQrDialog: React.FC<ScanQrDialogProps> = ({ isOpen, onClose, onD
         </div>
       </DialogContent>
     </Dialog>
+    </LocalizedTree>
   );
 };

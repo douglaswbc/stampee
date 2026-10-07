@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { LocalizedTree } from './LocalizedTree';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -112,6 +113,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
   }
 
   return (
+    <LocalizedTree>
     <div className="min-h-screen bg-[#f5f5f7] px-4 py-10 sm:px-6 sm:py-14">
       {isShowingPreRedirectLoader && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 px-6 backdrop-blur-sm">
@@ -206,5 +208,6 @@ export const PublicCampaignSignupPage: React.FC = () => {
         </section>
       </div>
     </div>
+    </LocalizedTree>
   );
 };

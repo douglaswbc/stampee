@@ -2,6 +2,7 @@ import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Loader2, PartyPopper, X } from 'lucide-react';
 import { ThemeColors } from '../types';
 import { resolveHexAndOpacity, hexToRgba } from '../lib/utils';
+import { LocalizedTree } from './LocalizedTree';
 
 const LottiePlayer = lazy(() => import('lottie-react'));
 
@@ -108,6 +109,7 @@ export const RewardModal: React.FC<RewardModalProps> = ({ isOpen, onClose, loadi
     : "fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4";
 
   return (
+    <LocalizedTree>
     <div className={rootClassName}>
       <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden="true">
         {confettiPieces.map((piece) => (
@@ -193,5 +195,6 @@ export const RewardModal: React.FC<RewardModalProps> = ({ isOpen, onClose, loadi
         </div>
       </div>
     </div>
+    </LocalizedTree>
   );
 };

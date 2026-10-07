@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LocalizedTree } from './LocalizedTree';
 import { Template } from '../types';
 import { templates } from '../data/templates';
 import { LoyaltyCard } from './LoyaltyCard';
@@ -108,6 +109,7 @@ export const TemplatesGallery: React.FC = () => {
   };
 
   return (
+    <LocalizedTree>
     <div className="p-4 md:p-8 space-y-8 animate-fade-in h-full overflow-y-auto bg-gray-50/50">
       <header className="flex flex-col gap-6 border-b pb-6">
         <div className="flex items-center gap-4">
@@ -149,5 +151,6 @@ export const TemplatesGallery: React.FC = () => {
         ))}
       </div>
     </div>
+    </LocalizedTree>
   );
 };
