@@ -25,14 +25,15 @@ begin
   where e.transaction_id = t.id
     and c.owner_id = owner_id_value;
 
-  -- Delete restricted reward-code references before the reward catalog.
+  -- Remove reward codes first, then mission links, before the catalog rewards.
   delete from public.loyalty_reward_redemptions
   where owner_id = owner_id_value;
-  delete from public.loyalty_rewards
+
+  -- Mission progress and completions reference catalog rewards.
+  delete from public.loyalty_missions
   where owner_id = owner_id_value;
 
-  -- Mission progress, completions, and delivery history cascade from missions.
-  delete from public.loyalty_missions
+  delete from public.loyalty_rewards
   where owner_id = owner_id_value;
 
   -- Customer deletion cascades cards, transactions, points, badges, and claims.

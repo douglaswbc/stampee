@@ -9,7 +9,7 @@ import { Switch } from './ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { ArrowLeft, Check as CheckIcon, Smartphone, Image as ImageIcon, Type, Palette, Grid, X, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Check as CheckIcon, Smartphone, Image as ImageIcon, Type, Palette, Grid, X, ChevronDown, Minus, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ICON_OPTIONS } from '../lib/iconRegistry';
 import { useAuth } from './AuthProvider';
@@ -618,7 +618,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
 
   return (
     <LocalizedTree>
-    <div className="min-h-[100dvh] bg-gray-50 font-sans lg:flex lg:min-h-screen">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-gray-50 font-sans lg:flex-row">
       <div className="hidden lg:static lg:order-2 lg:flex lg:flex-1 lg:items-center lg:justify-center lg:border-b-0 lg:bg-gray-100 lg:p-12">
         <div className="relative mx-auto w-full max-w-[430px] lg:max-w-[380px]">
           <div className="h-[56dvh] min-h-[340px] max-h-[520px] w-full overflow-hidden rounded-3xl bg-white ring-1 ring-black/5 shadow-lg lg:h-[750px] lg:max-h-none lg:rounded-[3rem] lg:shadow-none">
@@ -635,7 +635,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
         </div>
       </div>
 
-      <div className="order-2 w-full bg-white p-4 pb-6 sm:p-6 lg:order-1 lg:h-[100dvh] lg:w-1/3 lg:border-r lg:p-10 lg:pb-10 lg:overflow-hidden">
+      <div className="order-2 flex h-full min-h-0 w-full flex-col overflow-hidden bg-white p-4 pb-6 sm:p-6 lg:order-1 lg:w-1/3 lg:border-r lg:p-10 lg:pb-10">
         <div className="mb-2 flex items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" onClick={handleCancel} className="rounded-full">
@@ -656,7 +656,49 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
             </Button>
         </div>
 
-        <div className="px-3 sm:px-4 lg:flex-1 lg:overflow-y-auto lg:px-3 lg:pr-3 xl:px-4 lg:no-scrollbar">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 sm:px-4 lg:px-3 lg:pr-3 xl:px-4 lg:no-scrollbar">
+            <div className="mb-4 rounded-2xl border bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                        <Label id="totalStampsLabel" className="text-sm font-semibold">Number of Stamps</Label>
+                        <p className="mt-1 text-xs text-muted-foreground">Set how many stamps unlock the reward.</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Decrease stamp count"
+                            onClick={() => handleStampsChange(template.totalStamps - 1)}
+                            disabled={template.totalStamps <= 3}
+                        >
+                            <Minus size={16} />
+                        </Button>
+                        <output
+                            id="totalStamps"
+                            aria-labelledby="totalStampsLabel"
+                            aria-live="polite"
+                            className="min-w-12 text-center text-2xl font-bold tabular-nums"
+                        >
+                            {template.totalStamps}
+                        </output>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            aria-label="Increase stamp count"
+                            onClick={() => handleStampsChange(template.totalStamps + 1)}
+                            disabled={template.totalStamps >= 16}
+                        >
+                            <Plus size={16} />
+                        </Button>
+                    </div>
+                </div>
+                <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                    <span>Minimum: 3</span>
+                    <span>Maximum: 16</span>
+                </div>
+            </div>
             <Accordion type="multiple" value={openSections} onValueChange={setOpenSections} className="w-full">
                 <AccordionItem value="general">
                     <AccordionTrigger>
@@ -772,28 +814,6 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
                                 placeholder={`Collect ${template.totalStamps} stamps for a...`}
                             />
                             <p className="text-xs text-muted-foreground">Override the default "Collect X stamps..." text.</p>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                                <Label htmlFor="totalStamps">Number of Stamps</Label>
-                                <span className="inline-flex min-w-12 items-center justify-center rounded-full bg-secondary px-3 py-1 text-sm font-semibold">
-                                    {template.totalStamps}
-                                </span>
-                            </div>
-                            <input
-                                id="totalStamps"
-                                type="range"
-                                min={3}
-                                max={16}
-                                step={1}
-                                value={template.totalStamps}
-                                onChange={(e) => handleStampsChange(parseInt(e.target.value, 10))}
-                                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200"
-                            />
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                                <span>3</span>
-                                <span>16</span>
-                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
@@ -1150,7 +1170,7 @@ export const CardEditor: React.FC<CardEditorProps> = ({ initialTemplate, onSave 
             </Accordion>
         </div>
 
-        <div className="mt-8 border-t pt-6 lg:mt-auto lg:shrink-0">
+        <div className="mt-4 shrink-0 border-t pt-4 pb-[env(safe-area-inset-bottom)] lg:mt-auto lg:pt-6">
             {saveError && (
                 <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                     {saveError}

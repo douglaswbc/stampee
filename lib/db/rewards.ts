@@ -74,6 +74,14 @@ const parsePublicReward = (value: unknown): PublicLoyaltyReward | null => {
   const row = asRecord(value);
   if (!row || typeof row.id !== 'string' || typeof row.name !== 'string') return null;
   const reason = row.unavailableReason;
+  const missionCompletions = Array.isArray(row.missionCompletions)
+    ? row.missionCompletions.flatMap(value => {
+      const completion = asRecord(value);
+      return completion && typeof completion.completionId === 'string' && typeof completion.missionName === 'string'
+        ? [{ completionId: completion.completionId, missionName: completion.missionName }]
+        : [];
+    })
+    : [];
   return {
     id: row.id,
     name: row.name,
@@ -87,6 +95,7 @@ const parsePublicReward = (value: unknown): PublicLoyaltyReward | null => {
     unavailableReason: reason === 'points_program_disabled' || reason === 'not_enough_points'
       || reason === 'sold_out' || reason === 'customer_limit' ? reason : null,
     endsAt: typeof row.endsAt === 'string' ? row.endsAt : '',
+    missionCompletions,
   };
 };
 
@@ -108,6 +117,7 @@ const parseRedemption = (value: unknown): LoyaltyRewardRedemption | null => {
     cancelledAt: typeof row.cancelledAt === 'string' ? row.cancelledAt : null,
     cancellationReason: typeof row.cancellationReason === 'string' ? row.cancellationReason : null,
     customerName: typeof row.customerName === 'string' ? row.customerName : undefined,
+    missionName: typeof row.missionName === 'string' ? row.missionName : null,
   };
 };
 
@@ -176,6 +186,28 @@ export async function claimPublicLoyaltyReward(input: {
     slug_input: input.slug,
     card_unique_id: input.cardUniqueId,
     reward_id_input: input.rewardId,
+    idempotency_key_input: input.idempotencyKey,
+  });
+  if (error) return { ok: false, error: error.message };
+  const row = asRecord(data);
+  if (!row || row.success !== true || typeof row.redemptionId !== 'string' || typeof row.code !== 'string' || typeof row.expiresAt !== 'string') {
+    return { ok: false, error: typeof row?.error === 'string' ? row.error : 'unable_to_claim' };
+  }
+  return { ok: true, claim: { redemptionId: row.redemptionId, code: row.code, expiresAt: row.expiresAt, balance: asNumber(row.balance) } };
+}
+
+export async function claimPublicMissionCatalogReward(input: {
+  slug: string;
+  cardUniqueId: string;
+  completionId: string;
+  idempotencyKey: string;
+}): Promise<
+  { ok: true; claim: LoyaltyRewardClaim } | { ok: false; error: string }
+> {
+  const { data, error } = await supabase.rpc('claim_mission_catalog_reward', {
+    slug_input: input.slug,
+    card_unique_id: input.cardUniqueId,
+    completion_id_input: input.completionId,
     idempotency_key_input: input.idempotencyKey,
   });
   if (error) return { ok: false, error: error.message };

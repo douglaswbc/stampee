@@ -14,7 +14,7 @@ const formatMissionDate = (value: string, locale: string) => new Intl.DateTimeFo
 }).format(new Date(value));
 
 export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missions }) => {
-  const { language } = useLocale();
+  const { language, t } = useLocale();
   if (!missions.length) return null;
 
   return (
@@ -67,12 +67,18 @@ export const MissionProgressList: React.FC<MissionProgressListProps> = ({ missio
                   <span>{mission.rewardDescription}</span>
                 </div>
                 {mission.availableRewards ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><CheckCircle2 size={14} />Reward ready</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700"><CheckCircle2 size={14} />
+                    {t(mission.rewardType === 'catalog_reward' ? 'Catalog reward unlocked' : 'Reward ready')}
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">Ends {formatMissionDate(mission.endsAt, language)}</span>
                 )}
               </div>
-              {mission.availableRewards ? <p className="mt-2 text-xs text-gray-500">Show this card to the team to claim your reward.</p> : null}
+              {mission.availableRewards ? <p className="mt-2 text-xs text-gray-500">
+                {mission.rewardType === 'catalog_reward'
+                  ? t('Claim this reward in the catalog on this card. The team validates its code when delivering it.')
+                  : t('Show this card to the team to claim your reward.')}
+              </p> : null}
               {mission.completedCount > 0 && mission.maxCompletions > 1 && (
                 <p className="mt-2 text-xs text-gray-500">Completed {mission.completedCount} of {mission.maxCompletions} times.</p>
               )}

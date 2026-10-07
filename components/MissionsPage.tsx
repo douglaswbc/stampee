@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Gift, Pause, Pencil, Play, Plus, RotateCcw, Target, Users } from 'lucide-react';
-import type { LoyaltyMission, LoyaltyMissionType, Template } from '../types';
+import { Link } from 'react-router-dom';
+import type { LoyaltyMission, LoyaltyMissionType, LoyaltyReward, Template } from '../types';
 import { createMission, fetchOwnerMissions, MissionInput, setMissionActive, updateMission } from '../lib/db/missions';
+import { fetchOwnerLoyaltyRewards } from '../lib/db/rewards';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -20,9 +22,10 @@ type MissionForm = {
   goalCount: string;
   startsAt: string;
   endsAt: string;
-  rewardType: 'benefit' | 'bonus_stamps';
+  rewardType: 'benefit' | 'bonus_stamps' | 'catalog_reward';
   rewardDescription: string;
   rewardStamps: string;
+  catalogRewardId: string;
   maxCompletions: string;
   isActive: boolean;
 };
@@ -47,6 +50,7 @@ const emptyForm = (campaignId = ''): MissionForm => {
     rewardType: 'benefit',
     rewardDescription: '',
     rewardStamps: '1',
+    catalogRewardId: '',
     maxCompletions: '1',
     isActive: true,
   };
@@ -63,6 +67,7 @@ const missionToForm = (mission: LoyaltyMission): MissionForm => ({
   rewardType: mission.rewardType,
   rewardDescription: mission.rewardDescription,
   rewardStamps: String(mission.rewardStamps || 1),
+  catalogRewardId: mission.catalogRewardId ?? '',
   maxCompletions: String(mission.maxCompletions),
   isActive: mission.isActive,
 });
@@ -75,6 +80,8 @@ const formatDate = (value: string, language: string) => new Intl.DateTimeFormat(
 export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const { t, language } = useLocale();
   const [missions, setMissions] = useState<LoyaltyMission[]>([]);
+  const [catalogRewards, setCatalogRewards] = useState<LoyaltyReward[]>([]);
+  const [catalogError, setCatalogError] = useState('');
   const [form, setForm] = useState<MissionForm>(() => emptyForm(campaigns[0]?.id ?? ''));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,15 +90,33 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
   const [notice, setNotice] = useState('');
 
   const campaignNames = useMemo(() => new Map(campaigns.map(campaign => [campaign.id, campaign.name])), [campaigns]);
+  const eligibleCatalogRewards = useMemo(() => {
+    const startsAt = new Date(form.startsAt).getTime();
+    const endsAt = new Date(form.endsAt).getTime();
+    return catalogRewards.filter(reward => {
+      const campaignMatches = reward.campaignId === null || reward.campaignId === form.campaignId;
+      const datesOverlap = new Date(reward.startsAt).getTime() < endsAt && new Date(reward.endsAt).getTime() > startsAt;
+      return (reward.isActive && campaignMatches && datesOverlap) || reward.id === form.catalogRewardId;
+    });
+  }, [catalogRewards, form.campaignId, form.catalogRewardId, form.startsAt, form.endsAt]);
 
   const loadMissions = async () => {
     setLoading(true);
-    const result = await fetchOwnerMissions();
-    if (result.ok) {
-      setMissions(result.missions);
+    const [missionsResult, rewardsResult] = await Promise.all([
+      fetchOwnerMissions(),
+      fetchOwnerLoyaltyRewards(),
+    ]);
+    if (missionsResult.ok) {
+      setMissions(missionsResult.missions);
       setError('');
     } else {
       setError(t('Unable to load missions. Apply the loyalty missions database patch, then try again.'));
+    }
+    if (rewardsResult.ok) {
+      setCatalogRewards(rewardsResult.rewards);
+      setCatalogError('');
+    } else {
+      setCatalogError(t('Unable to load rewards. Apply the loyalty rewards database patch and try again.'));
     }
     setLoading(false);
   };
@@ -121,7 +146,10 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
     const startsAt = new Date(form.startsAt);
     const endsAt = new Date(form.endsAt);
     const rewardStamps = form.rewardType === 'bonus_stamps' ? Number(form.rewardStamps) : 0;
-    if (!form.campaignId || !form.name.trim() || (form.rewardType === 'benefit' && !form.rewardDescription.trim())) {
+    const selectedCatalogReward = catalogRewards.find(reward => reward.id === form.catalogRewardId);
+    if (!form.campaignId || !form.name.trim()
+      || (form.rewardType === 'benefit' && !form.rewardDescription.trim())
+      || (form.rewardType === 'catalog_reward' && !selectedCatalogReward)) {
       setError(t('Choose a campaign and enter a mission name and reward.'));
       return null;
     }
@@ -153,8 +181,11 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
       rewardType: form.rewardType,
       rewardDescription: form.rewardType === 'bonus_stamps'
         ? `${rewardStamps} bonus stamp${rewardStamps === 1 ? '' : 's'}`
-        : form.rewardDescription.trim(),
+        : form.rewardType === 'catalog_reward'
+          ? selectedCatalogReward?.name ?? ''
+          : form.rewardDescription.trim(),
       rewardStamps,
+      catalogRewardId: form.rewardType === 'catalog_reward' ? form.catalogRewardId : null,
       maxCompletions,
       isActive: form.isActive,
     };
@@ -230,7 +261,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="mission-campaign">{t('Campaign')}</Label>
-            <select id="mission-campaign" className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm" value={form.campaignId} onChange={event => setForm({ ...form, campaignId: event.target.value })} required>
+            <select id="mission-campaign" className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm" value={form.campaignId} onChange={event => setForm({ ...form, campaignId: event.target.value, catalogRewardId: '' })} required>
               <option value="">{t('Choose a campaign')}</option>
               {campaigns.map(campaign => <option key={campaign.id} value={campaign.id}>{campaign.name}</option>)}
             </select>
@@ -263,10 +294,23 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
             <select id="mission-reward-type" className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm" value={form.rewardType} onChange={event => setForm({ ...form, rewardType: event.target.value as MissionForm['rewardType'] })}>
               <option value="benefit">{t('Benefit to redeem with the team')}</option>
               <option value="bonus_stamps">{t('Bonus stamps on an active card')}</option>
+              <option value="catalog_reward">{t('Reward from the catalog')}</option>
             </select>
           </div>
           <div className="space-y-2">
-            {form.rewardType === 'bonus_stamps' ? <>
+            {form.rewardType === 'catalog_reward' ? <>
+              <Label htmlFor="mission-catalog-reward">{t('Catalog reward')}</Label>
+              <select id="mission-catalog-reward" className="h-11 w-full rounded-md border border-input bg-background px-3.5 text-sm" value={form.catalogRewardId} onChange={event => setForm({ ...form, catalogRewardId: event.target.value })} required>
+                <option value="">{t('Choose a catalog reward')}</option>
+                {eligibleCatalogRewards.map(reward => (
+                  <option key={reward.id} value={reward.id}>{reward.name} ({reward.pointsCost > 0 ? `${reward.pointsCost} ${t('points')}` : t('Free')})</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">{t('Mission completions unlock this catalog reward. Customers claim a code on their card; points are not charged, while catalog stock and customer limits still apply.')}</p>
+              {!catalogRewards.length && !catalogError && <p className="text-xs text-amber-700">{t('Create a reward in the catalog before linking it to a mission.')} <Link className="underline" to="/rewards">{t('Open reward catalog')}</Link></p>}
+              {catalogError && <p className="text-xs text-rose-700">{catalogError}</p>}
+              {catalogRewards.length > 0 && eligibleCatalogRewards.length === 0 && <p className="text-xs text-amber-700">{t('No active catalog rewards match this campaign and mission period.')}</p>}
+            </> : form.rewardType === 'bonus_stamps' ? <>
               <Label htmlFor="mission-reward-stamps">{t('Bonus stamps')}</Label>
               <Input id="mission-reward-stamps" type="number" min={1} max={20} step={1} value={form.rewardStamps} onChange={event => setForm({ ...form, rewardStamps: event.target.value })} required />
             </> : <>
@@ -285,7 +329,7 @@ export const MissionsPage: React.FC<MissionsPageProps> = ({ campaigns }) => {
           {error && <p role="alert" className="text-sm text-destructive md:col-span-2">{error}</p>}
           {notice && <p role="status" className="text-sm text-emerald-700 md:col-span-2">{notice}</p>}
           <div className="flex flex-wrap gap-2 md:col-span-2">
-            <Button type="submit" disabled={saving || campaigns.length === 0}>
+            <Button type="submit" disabled={saving || campaigns.length === 0 || (form.rewardType === 'catalog_reward' && !form.catalogRewardId)}>
               {saving ? (
               <span key="saving">{t('Saving…')}</span>
               ) : editingId ? (

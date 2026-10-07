@@ -177,6 +177,7 @@ export const RewardRedemptionsPage: React.FC = () => {
                       <td className="px-4 py-3">
                         <span className="block font-medium">{redemption.rewardName}</span>
                         {redemption.customerName && <span className="text-xs text-muted-foreground">{redemption.customerName}</span>}
+                        {redemption.missionName && <span className="mt-0.5 block text-xs text-emerald-700">{t('Mission')}: {redemption.missionName}</span>}
                         {redemption.cancellationReason && <span className="mt-1 block text-xs text-muted-foreground">{t('Reason')}: {redemption.cancellationReason}</span>}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs">{redemption.code}</td>

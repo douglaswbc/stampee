@@ -95,8 +95,10 @@ export interface LoyaltyMissionCompletion {
   id?: string;
   completionNumber?: number;
   rewardDescription?: string;
-  rewardType?: 'benefit' | 'bonus_stamps';
+  rewardType?: 'benefit' | 'bonus_stamps' | 'catalog_reward';
   rewardStamps?: number;
+  catalogRewardId?: string | null;
+  catalogRewardClaimStatus?: 'available' | 'issued' | 'redeemed' | null;
   completedAt?: string;
   redeemedAt?: string | null;
 }
@@ -111,9 +113,11 @@ export interface LoyaltyMission {
   goalCount: number;
   startsAt: string;
   endsAt: string;
-  rewardType: 'benefit' | 'bonus_stamps';
+  rewardType: 'benefit' | 'bonus_stamps' | 'catalog_reward';
   rewardDescription: string;
   rewardStamps: number;
+  catalogRewardId?: string | null;
+  catalogRewardName?: string | null;
   maxCompletions: number;
   isActive: boolean;
   completedCount: number;
@@ -189,6 +193,7 @@ export interface PublicLoyaltyReward {
   canClaim: boolean;
   unavailableReason: LoyaltyRewardUnavailableReason | null;
   endsAt: string;
+  missionCompletions?: { completionId: string; missionName: string }[];
 }
 
 export interface LoyaltyRewardRedemption {
@@ -204,6 +209,7 @@ export interface LoyaltyRewardRedemption {
   cancelledAt?: string | null;
   cancellationReason?: string | null;
   customerName?: string;
+  missionName?: string | null;
 }
 
 // Internal account state. Email confirmation now comes from Supabase auth.

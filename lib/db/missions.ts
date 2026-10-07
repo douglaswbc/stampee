@@ -6,7 +6,24 @@ function parseMission(value: unknown): LoyaltyMission | null {
   const row = value as Record<string, unknown>;
   if (typeof row.id !== 'string' || typeof row.name !== 'string') return null;
   const completions = Array.isArray(row.completions)
-    ? row.completions.filter((completion): completion is LoyaltyMissionCompletion => Boolean(completion && typeof completion === 'object'))
+    ? row.completions.flatMap(value => {
+      if (!value || typeof value !== 'object') return [];
+      const completion = value as Record<string, unknown>;
+      const claimStatus = completion.catalogRewardClaimStatus;
+      return [{
+        id: typeof completion.id === 'string' ? completion.id : undefined,
+        completionNumber: Number(completion.completionNumber) || undefined,
+        rewardDescription: typeof completion.rewardDescription === 'string' ? completion.rewardDescription : undefined,
+        rewardType: completion.rewardType === 'bonus_stamps' || completion.rewardType === 'catalog_reward'
+          ? completion.rewardType : 'benefit',
+        rewardStamps: Number(completion.rewardStamps) || 0,
+        catalogRewardId: typeof completion.catalogRewardId === 'string' ? completion.catalogRewardId : null,
+        catalogRewardClaimStatus: claimStatus === 'available' || claimStatus === 'issued' || claimStatus === 'redeemed'
+          ? claimStatus : null,
+        completedAt: typeof completion.completedAt === 'string' ? completion.completedAt : undefined,
+        redeemedAt: typeof completion.redeemedAt === 'string' ? completion.redeemedAt : null,
+      } satisfies LoyaltyMissionCompletion];
+    })
     : undefined;
 
   return {
@@ -19,9 +36,11 @@ function parseMission(value: unknown): LoyaltyMission | null {
     goalCount: Number(row.goalCount) || 1,
     startsAt: typeof row.startsAt === 'string' ? row.startsAt : '',
     endsAt: typeof row.endsAt === 'string' ? row.endsAt : '',
-    rewardType: row.rewardType === 'bonus_stamps' ? 'bonus_stamps' : 'benefit',
+    rewardType: row.rewardType === 'bonus_stamps' || row.rewardType === 'catalog_reward' ? row.rewardType : 'benefit',
     rewardDescription: typeof row.rewardDescription === 'string' ? row.rewardDescription : '',
     rewardStamps: Number(row.rewardStamps) || 0,
+    catalogRewardId: typeof row.catalogRewardId === 'string' ? row.catalogRewardId : null,
+    catalogRewardName: typeof row.catalogRewardName === 'string' ? row.catalogRewardName : null,
     maxCompletions: Number(row.maxCompletions) || 1,
     isActive: row.isActive === true,
     completedCount: Number(row.completedCount) || 0,
@@ -50,9 +69,10 @@ export type MissionInput = {
   goalCount: number;
   startsAt: string;
   endsAt: string;
-  rewardType: 'benefit' | 'bonus_stamps';
+  rewardType: 'benefit' | 'bonus_stamps' | 'catalog_reward';
   rewardDescription: string;
   rewardStamps: number;
+  catalogRewardId: string | null;
   maxCompletions: number;
   isActive: boolean;
 };
@@ -69,6 +89,7 @@ function missionToRow(input: MissionInput) {
     reward_description: input.rewardDescription.trim(),
     reward_type: input.rewardType,
     reward_stamps: input.rewardStamps,
+    catalog_reward_id: input.catalogRewardId,
     max_completions: input.maxCompletions,
     is_active: input.isActive,
   };

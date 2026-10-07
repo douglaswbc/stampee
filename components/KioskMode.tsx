@@ -99,7 +99,7 @@ export const KioskMode: React.FC<KioskModeProps> = ({
   onMissionCardUpdate,
   mutationBusy = false
 }) => {
-  const { language } = useLocale();
+  const { language, t } = useLocale();
   const [isAnimating, setIsAnimating] = useState(false);
   const [actionError, setActionError] = useState("");
   const [missions, setMissions] = useState<LoyaltyMission[]>([]);
@@ -416,10 +416,19 @@ export const KioskMode: React.FC<KioskModeProps> = ({
                       <p className="mt-2 text-sm text-[#5f6368]">{mission.rewardDescription}</p>
                       {mission.completions?.filter(completion => !completion.redeemedAt).map(completion => completion.id ? (
                         <div key={completion.id} className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 ring-1 ring-black/5">
-                          <span className="text-sm font-medium text-[#1d1d1f]">Reward #{completion.completionNumber ?? 1} is ready to claim</span>
-                          <Button size="sm" className="rounded-full bg-[#1d1d1f]" disabled={redeemingCompletionId === completion.id} onClick={() => void handleRedeemMissionReward(completion.id!)}>
-                            {redeemingCompletionId === completion.id ? 'Saving…' : 'Confirm reward'}
-                          </Button>
+                          {completion.rewardType === 'catalog_reward' ? <>
+                            <span className="text-sm font-medium text-[#1d1d1f]">
+                              {completion.catalogRewardClaimStatus === 'issued'
+                                ? t('Code issued. Validate it in Reward Codes.')
+                                : t('Check the customer digital card for catalog reward availability.')}
+                            </span>
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t('Reward from catalog')}</span>
+                          </> : <>
+                            <span className="text-sm font-medium text-[#1d1d1f]">Reward #{completion.completionNumber ?? 1} is ready to claim</span>
+                            <Button size="sm" className="rounded-full bg-[#1d1d1f]" disabled={redeemingCompletionId === completion.id} onClick={() => void handleRedeemMissionReward(completion.id!)}>
+                              {redeemingCompletionId === completion.id ? 'Saving…' : 'Confirm reward'}
+                            </Button>
+                          </>}
                         </div>
                       ) : null)}
                     </div>

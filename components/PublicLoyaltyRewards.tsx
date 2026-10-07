@@ -3,6 +3,7 @@ import { Gift, TicketCheck } from 'lucide-react';
 import type { LoyaltyRewardRedemption, PublicLoyaltyReward } from '../types';
 import {
   claimPublicLoyaltyReward,
+  claimPublicMissionCatalogReward,
   fetchPublicLoyaltyRewardRedemptions,
   fetchPublicLoyaltyRewards,
 } from '../lib/db/rewards';
@@ -35,7 +36,7 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
   const [requestKeys, setRequestKeys] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [newCode, setNewCode] = useState<{ code: string; rewardName: string; expiresAt: string } | null>(null);
+  const [newCode, setNewCode] = useState<{ code: string; rewardName: string; expiresAt: string; missionName?: string } | null>(null);
 
   const load = useCallback(async () => {
     const [rewardsResult, redemptionsResult] = await Promise.all([
@@ -60,12 +61,20 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
     setClaimingId(reward.id);
     const requestKey = requestKeys[reward.id] ?? globalThis.crypto.randomUUID();
     setRequestKeys(current => ({ ...current, [reward.id]: requestKey }));
-    const result = await claimPublicLoyaltyReward({
-      slug,
-      cardUniqueId,
-      rewardId: reward.id,
-      idempotencyKey: requestKey,
-    });
+    const missionEntitlement = reward.missionCompletions?.[0];
+    const result = missionEntitlement
+      ? await claimPublicMissionCatalogReward({
+        slug,
+        cardUniqueId,
+        completionId: missionEntitlement.completionId,
+        idempotencyKey: requestKey,
+      })
+      : await claimPublicLoyaltyReward({
+        slug,
+        cardUniqueId,
+        rewardId: reward.id,
+        idempotencyKey: requestKey,
+      });
     setClaimingId(null);
     if (!result.ok) {
       const errorKey = result.error === 'not_eligible' ? 'This reward is not available for your points balance.'
@@ -81,7 +90,12 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
       delete next[reward.id];
       return next;
     });
-    setNewCode({ code: result.claim.code, rewardName: reward.name, expiresAt: result.claim.expiresAt });
+    setNewCode({
+      code: result.claim.code,
+      rewardName: reward.name,
+      expiresAt: result.claim.expiresAt,
+      missionName: missionEntitlement?.missionName,
+    });
     setBalance(result.claim.balance);
     setNotice(t('Reward claimed. Show this code to the team before it expires.'));
     await load();
@@ -105,6 +119,7 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
         {newCode && (
           <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4" role="status">
             <p className="text-sm font-semibold text-emerald-900">{t('Your reward code')}: {newCode.rewardName}</p>
+            {newCode.missionName && <p className="mt-1 text-xs text-emerald-800">{t('Unlocked by mission')}: {newCode.missionName}</p>}
             <p className="mt-2 break-all rounded-lg bg-white px-3 py-2 text-center font-mono text-lg font-bold tracking-[0.12em] text-gray-900">{newCode.code}</p>
             <p className="mt-2 text-xs text-emerald-900/75">{t('Valid until')} {formatDate(newCode.expiresAt, language)}</p>
           </div>
@@ -122,15 +137,21 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
                     <p className="mt-1 text-sm text-gray-600">{reward.description}</p>
                   </div>
                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
-                    {reward.pointsCost > 0 ? `${new Intl.NumberFormat(language).format(reward.pointsCost)} ${t('points')}` : t('Free')}
+                    {reward.missionCompletions?.length
+                      ? t('Mission reward')
+                      : reward.pointsCost > 0 ? `${new Intl.NumberFormat(language).format(reward.pointsCost)} ${t('points')}` : t('Free')}
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
-                  <span>{reward.minimumPoints > 0 ? `${t('Requires at least')} ${reward.minimumPoints} ${t('points')}` : `${t('Claims')}: ${reward.customerClaimCount}/${reward.maxClaimsPerCustomer}`}</span>
+                  <span>{reward.missionCompletions?.length
+                    ? `${t('Unlocked by mission')}: ${reward.missionCompletions[0].missionName}`
+                    : reward.minimumPoints > 0 ? `${t('Requires at least')} ${reward.minimumPoints} ${t('points')}` : `${t('Claims')}: ${reward.customerClaimCount}/${reward.maxClaimsPerCustomer}`}</span>
                   <span>{reward.remainingQuantity === null ? t('Unlimited stock') : `${reward.remainingQuantity} ${t('remaining')}`}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-500">{t('Offer ends')} {formatDate(reward.endsAt, language)}</span>
+                  <span className="text-xs text-gray-500">{reward.missionCompletions?.length
+                    ? t('Claim this reward with the mission completion; points are not charged.')
+                    : `${t('Offer ends')} ${formatDate(reward.endsAt, language)}`}</span>
                   <Button type="button" size="sm" disabled={!reward.canClaim || claimingId !== null} onClick={() => void handleClaim(reward)}>
                     <TicketCheck size={14} className="mr-1.5" />{claimingId === reward.id ? t('Creating code...') : t('Claim')}
                   </Button>
@@ -157,6 +178,7 @@ export const PublicLoyaltyRewards: React.FC<PublicLoyaltyRewardsProps> = ({ slug
                   <span>
                     <span className="block font-medium text-gray-800">{redemption.rewardName}</span>
                     <span className="font-mono text-xs text-gray-500">{redemption.code}</span>
+                    {redemption.missionName && <span className="mt-0.5 block text-xs text-emerald-700">{t('Unlocked by mission')}: {redemption.missionName}</span>}
                   </span>
                   <span className="text-right text-xs text-gray-500">
                     <span className="block font-semibold">{redemptionStatus(redemption.status, t)}</span>
