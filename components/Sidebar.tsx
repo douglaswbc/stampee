@@ -72,9 +72,9 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
   const { t } = useLocale();
 
   return (
-    <div className="flex h-full flex-col py-8">
-      <div className="px-3 py-2">
-        <div className="mb-6 px-4 flex items-center gap-3">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 px-3 pb-3 pt-6">
+        <div className="px-4 flex items-center gap-3">
           <Link to="/" className="inline-flex items-center" onClick={onNavigate}>
             <img
               src="/stampfy.svg?v=2"
@@ -83,16 +83,18 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
             />
           </Link>
         </div>
-        <div className="space-y-2">
+      </div>
+      <nav aria-label={t('Main navigation')} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-3">
+        <div className="space-y-1">
           {NAV_ITEMS.filter((item) => item.roles.includes(isStaff ? 'staff' : 'owner')).map((item) => (
             <NavLink to={item.path} key={item.path} onClick={onNavigate}>
               {({ isActive }) => (
                 <Button
                   variant={isActive ? "secondary" : "ghost"}
-                  className="w-full justify-start gap-2"
+                  className="w-full min-w-0 justify-start gap-2"
                 >
                   <item.icon size={20} />
-                  {t(item.label)}
+                  <span className="truncate">{t(item.label)}</span>
                 </Button>
               )}
             </NavLink>
@@ -107,12 +109,12 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
               }}
             >
               <QrCode size={20} />
-              {t('Scan QR Code')}
+              <span className="truncate">{t('Scan QR Code')}</span>
             </Button>
           )}
         </div>
-      </div>
-      <div className="mt-auto px-4 pt-6 space-y-3">
+      </nav>
+      <footer className="max-h-[50%] shrink-0 space-y-3 overflow-y-auto overscroll-contain border-t border-border/70 px-4 pb-4 pt-3">
          <PlanBadge />
          {currentUser && (
           <div className="rounded-lg border border-border/80 bg-card px-3 py-3 text-xs text-muted-foreground shadow-subtle">
@@ -135,14 +137,14 @@ export const SidebarContent: React.FC<SidebarContentProps> = ({ onNavigate, onSc
          <div className="px-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
             v0.5
          </div>
-      </div>
+      </footer>
     </div>
   );
 };
 
 export const Sidebar: React.FC<SidebarProps> = ({ className, onScanQr }) => {
   return (
-    <div className={cn("hidden h-screen w-72 border-r border-border/80 bg-card md:block", className)}>
+    <div className={cn("hidden h-screen min-h-0 w-72 shrink-0 flex-col overflow-hidden border-r border-border/80 bg-card md:flex", className)}>
       <SidebarContent onScanQr={onScanQr} />
     </div>
   );

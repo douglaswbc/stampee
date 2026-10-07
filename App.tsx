@@ -568,10 +568,10 @@ const DashboardLayout: React.FC = () => {
             onClick={() => setIsMobileNavOpen(false)}
           />
           <div className={cn(
-            "absolute left-0 top-0 h-full w-[min(18rem,100vw)] border-r border-border/80 bg-card shadow-panel transition-transform duration-200",
+            "absolute left-0 top-0 flex h-full min-h-0 w-[min(18rem,100vw)] flex-col overflow-hidden border-r border-border/80 bg-card shadow-panel transition-transform duration-200",
             isMobileNavOpen ? "translate-x-0" : "-translate-x-full"
           )}>
-            <div className="flex items-center justify-between px-4 py-4 border-b">
+            <div className="flex shrink-0 items-center justify-between border-b px-4 py-4">
               <span className="text-sm font-semibold">Menu</span>
               <button
                 className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border/80"
