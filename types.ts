@@ -124,6 +124,37 @@ export interface LoyaltyMission {
   completions?: LoyaltyMissionCompletion[];
 }
 
+export interface LoyaltyPointLevel {
+  name: string;
+  minPoints: number;
+  benefit: string;
+}
+
+export type LoyaltyPointEntryType = 'visit' | 'visit_reversal' | 'manual_adjustment';
+
+export interface LoyaltyPointHistoryEntry {
+  entryType: LoyaltyPointEntryType;
+  pointsDelta: number;
+  description: string;
+  createdAt: string;
+}
+
+export interface LoyaltyBadge {
+  badgeKey: 'first_visit' | 'mission_completion';
+  earnedAt: string;
+}
+
+export interface CustomerLoyaltyPoints {
+  isEnabled: boolean;
+  balance: number;
+  currentLevel: LoyaltyPointLevel | null;
+  nextLevel: LoyaltyPointLevel | null;
+  pointsToNextLevel: number | null;
+  progressPercent: number;
+  history: LoyaltyPointHistoryEntry[];
+  badges: LoyaltyBadge[];
+}
+
 // Internal account state. Email confirmation now comes from Supabase auth.
 export type AccountStatus = 'unverified' | 'verified';
 export type UserRole = 'owner' | 'staff';

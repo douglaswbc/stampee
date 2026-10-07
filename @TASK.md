@@ -1,5 +1,11 @@
 # Plano de novas funcionalidades para o Stampfy
 
+## Legenda dos status
+
+- [ ] Pendente
+- [~] Implementação parcial ou validação pendente
+- [x] Concluído no código/repositório
+
 ## Objetivo
 
 Ampliar o Stampfy com recursos de fidelidade inspirados nas funcionalidades divulgadas pelo Enggaja, aproveitando a base de cartões e carimbos que já existe. A implementação deve ser incremental, compatível com os dados atuais e adequada ao modelo do Stampfy: uma empresa por instalação.
@@ -24,68 +30,72 @@ A tabela `transactions` registra eventos como `stamp_add`, `stamp_remove`, `rede
 
 ## Escopo por fases
 
-### Fase 1 — Missões e desafios com carimbos (MVP)
+### Fase 1 — Missões e desafios com carimbos (MVP) [~]
 
 Permitir que a empresa crie desafios de fidelidade associados a uma campanha, aproveitando eventos válidos de carimbo já registrados.
 
 Tipos iniciais:
 
-- **Frequência:** atingir uma quantidade de visitas/carimbos dentro de um período, por exemplo, três visitas na semana.
-- **Meta de campanha:** completar uma parte ou uma volta do cartão de uma campanha específica.
+- [x] **Frequência:** atingir uma quantidade de visitas/carimbos dentro de um período, por exemplo, três visitas na semana.
+- [x] **Meta de campanha:** completar uma parte ou uma volta do cartão de uma campanha específica.
 
 Configuração da missão:
 
-- nome e descrição;
-- campanha relacionada, quando aplicável;
-- tipo de meta e quantidade necessária;
-- início e fim, com datas no fuso da empresa;
-- estado ativa/inativa;
-- recompensa definida entre bônus de carimbo ou benefício textual resgatável pela equipe;
-- limite de conclusões por cliente e regra para permitir ou não repetição.
+- [x] nome e descrição;
+- [x] campanha relacionada, quando aplicável;
+- [x] tipo de meta e quantidade necessária;
+- [~] início e fim no fuso horário configurado pela empresa (atualmente a tela usa o fuso do navegador; falta configurar o fuso no perfil da empresa);
+- [x] estado ativa/inativa;
+- [x] recompensa definida entre bônus de carimbo ou benefício textual resgatável pela equipe;
+- [x] limite de conclusões por cliente e regra para permitir ou não repetição.
 
 Experiência:
 
-- Proprietário cria, edita, ativa, pausa e consulta missões no painel.
-- Cliente vê missões ativas, progresso e conclusão na página pública do cartão.
-- Equipe consegue conferir a conclusão e registrar a entrega do benefício com identificação do atendente.
-- Analytics mostra adesões/conclusões e recompensas entregues.
+- [x] Proprietário cria, edita, ativa, pausa e consulta missões no painel.
+- [x] Cliente vê missões ativas, progresso e conclusão na página pública do cartão.
+- [x] Equipe consegue conferir a conclusão e registrar a entrega do benefício com identificação do atendente.
+- [x] Analytics mostra adesões/conclusões e recompensas entregues.
 
 Regras obrigatórias:
 
-- O progresso deriva de transações válidas criadas no servidor, não de valores enviados pelo navegador.
-- Definir claramente quais eventos contam: carimbos adicionados contam; remoções, emissão de cartão e resgates não contam como visita.
-- Uma mesma transação não pode gerar progresso mais de uma vez para a mesma missão.
-- A conclusão e a concessão da recompensa devem ser atômicas e idempotentes, protegidas contra chamadas simultâneas e repetidas.
-- Cada concessão e resgate deve deixar histórico auditável, incluindo cliente, missão, horário e usuário da equipe quando houver ação manual.
-- Missões encerradas não aceitam novo progresso, mas o cliente e a equipe ainda podem consultar conclusões anteriores.
+- [x] O progresso deriva de transações válidas criadas no servidor, não de valores enviados pelo navegador.
+- [x] Definir claramente quais eventos contam: carimbos adicionados contam; remoções, emissão de cartão e resgates não contam como visita.
+- [x] Uma mesma transação não pode gerar progresso mais de uma vez para a mesma missão.
+- [x] A conclusão e a concessão da recompensa devem ser atômicas e idempotentes, protegidas contra chamadas simultâneas e repetidas.
+- [x] Cada concessão e resgate deve deixar histórico auditável, incluindo cliente, missão, horário e usuário da equipe quando houver ação manual.
+- [x] Missões encerradas não aceitam novo progresso, mas o cliente e a equipe ainda podem consultar conclusões anteriores.
 
-### Fase 2 — Pontos, níveis e emblemas
+### Fase 2 — Pontos, níveis e emblemas [~]
+
+Implementação no repositório e patch no Supabase concluídos; falta validar manualmente o fluxo integrado no navegador.
 
 Adicionar uma camada de progressão geral do cliente sem alterar retroativamente o saldo de carimbos dos cartões.
 
-- Criar um ledger de pontos baseado em eventos auditáveis, com créditos e débitos e chave de idempotência.
-- Permitir que a empresa configure pontos por visita ou por regra simples de compra, caso exista um valor de compra confiável no fluxo atual.
-- Exibir saldo, histórico e progresso até o próximo nível ao cliente.
-- Permitir níveis configuráveis por faixas de pontos e benefícios descritivos.
-- Conceder emblemas por marcos verificáveis, como primeira visita ou conclusão de missão.
-- Definir a política para reversões, expiração e ajuste manual de pontos antes de habilitar o recurso.
+- [x] Criar um ledger imutável de pontos baseado em visitas verificadas, reversões e ajustes auditáveis, com chave de idempotência.
+- [x] Permitir configurar os pontos por visita; pontos por compra permanecem indisponíveis até existir um valor confiável no fluxo.
+- [x] Exibir saldo, histórico e progresso até o próximo nível na página pública do cartão.
+- [x] Permitir níveis configuráveis por faixas de pontos e benefícios descritivos.
+- [x] Conceder emblemas por marcos verificáveis: primeira visita e conclusão de missão.
+- [x] Definir a política: pontos não expiram; remover carimbo reverte os pontos correspondentes até o saldo disponível; ajustes manuais são exclusivos do proprietário, exigem motivo e não podem deixar o saldo negativo; emblemas conquistados permanecem.
+- [x] Aplicar `supabase/legacy-patches/add_loyalty_points.sql`; uma consulta de leitura confirmou a tabela de ledger, a RPC pública, o trigger de pontos e a auditoria de remoção de carimbo.
+- [~] Validar manualmente a configuração de pontos e níveis, a pontuação após uma visita e o resumo público do cliente.
 
 Não inferir valor gasto nem conceder pontos por compras enquanto o sistema não tiver uma fonte confiável desse valor.
 
-### Fase 3 — Catálogo de recompensas e cupons
+### Fase 3 — Catálogo de recompensas e cupons [ ]
 
-- Permitir mais de uma recompensa por campanha ou catálogo global da empresa.
-- Configurar custo em pontos ou condição de elegibilidade, validade, quantidade disponível e limite por cliente.
-- Gerar código de resgate único, quando aplicável, e permitir validação pela equipe.
-- Registrar emissão, expiração, resgate e cancelamento com trilha auditável.
-- Impedir saldo negativo, resgates acima do estoque e reutilização de códigos.
+- [ ] Permitir mais de uma recompensa por campanha ou catálogo global da empresa.
+- [ ] Configurar custo em pontos ou condição de elegibilidade, validade, quantidade disponível e limite por cliente.
+- [ ] Gerar código de resgate único, quando aplicável, e permitir validação pela equipe.
+- [ ] Registrar emissão, expiração, resgate e cancelamento com trilha auditável.
+- [ ] Impedir saldo negativo, resgates acima do estoque e reutilização de códigos.
 
-### Fase 4 — Comunicação e integrações
+### Fase 4 — Comunicação e integrações [ ]
 
-- Preparar notificações de progresso e recompensa por canal configurável, respeitando consentimento e preferências do cliente.
-- Avaliar integração com WhatsApp somente com provedor, templates e configuração oficial adequados.
-- Avaliar integração com Instagram somente por APIs oficiais da Meta, permissões aprovadas e regras vigentes. Oferecer revisão manual como alternativa; não simular acesso a mensagens ou interações privadas.
-- Registrar falhas e permitir reprocessamento seguro sem duplicar pontos ou recompensas.
+- [ ] Preparar notificações de progresso e recompensa por canal configurável, respeitando consentimento e preferências do cliente.
+- [ ] Avaliar integração com WhatsApp somente com provedor, templates e configuração oficial adequados.
+- [ ] Avaliar integração com Instagram somente por APIs oficiais da Meta, permissões aprovadas e regras vigentes. Oferecer revisão manual como alternativa; não simular acesso a mensagens ou interações privadas.
+- [ ] Registrar falhas e permitir reprocessamento seguro sem duplicar pontos ou recompensas.
 
 ## Direção técnica para o banco e a segurança
 
@@ -97,27 +107,27 @@ Toda operação que concede bônus ou marca uma missão como resgatada deve ocor
 
 ## Critérios de aceite do MVP (Fase 1)
 
-- Um proprietário consegue criar uma missão, definir campanha, meta, período, recompensa e ativá-la.
-- A interface informa quando os dados obrigatórios ou o período são inválidos.
-- Um carimbo válido da campanha atualiza o progresso do cliente elegível; remoção, emissão e resgate não atualizam esse progresso.
-- O cliente consegue consultar progresso e missões concluídas na página pública do próprio cartão, sem acessar dados de terceiros.
-- A meta só é concluída uma vez por ciclo configurado, inclusive com requisições repetidas ou concorrentes.
-- A equipe consegue conferir a elegibilidade e registrar a entrega uma única vez; o histórico identifica quem fez a operação.
-- Missões inativas, futuras ou expiradas não concedem progresso/recompensa fora das regras definidas.
-- Dados e políticas existentes de cartões, carimbos, login, resgate e RLS continuam funcionando.
-- A migration pode ser aplicada sem apagar ou recriar dados atuais.
+- [~] Um proprietário consegue criar uma missão, definir campanha, meta, período no fuso horário da empresa, recompensa e ativá-la.
+- [x] A interface informa quando os dados obrigatórios ou o período são inválidos.
+- [x] Um carimbo válido da campanha atualiza o progresso do cliente elegível; remoção, emissão e resgate não atualizam esse progresso.
+- [x] O cliente consegue consultar progresso e missões concluídas na página pública do próprio cartão, sem acessar dados de terceiros.
+- [x] A meta só é concluída uma vez por ciclo configurado, inclusive com requisições repetidas ou concorrentes.
+- [x] A equipe consegue conferir a elegibilidade e registrar a entrega uma única vez; o histórico identifica quem fez a operação.
+- [x] Missões inativas, futuras ou expiradas não concedem progresso/recompensa fora das regras definidas.
+- [~] Compatibilidade dos dados e políticas existentes de cartões, carimbos, login, resgate e RLS: a migration é aditiva; falta validar o fluxo integrado.
+- [x] A migration pode ser aplicada sem apagar ou recriar dados atuais.
 
 ## Ordem sugerida de execução
 
-1. Inspecionar rotas, componentes, serviços, migrations e políticas RLS existentes; confirmar o fluxo real de carimbo e resgate.
-2. Definir formalmente ciclo da missão, eventos que contam, fuso horário e limite de repetição.
-3. Criar migration aditiva, constraints, índices, políticas e operações seguras para criar missão, atualizar progresso e resgatar recompensa.
-4. Implementar tipos e acesso a dados no frontend sem duplicar regras de negócio no cliente.
-5. Criar gerenciamento de missões no painel do proprietário.
-6. Exibir progresso e conclusão na página pública do cartão.
-7. Integrar conferência/entrega à interface da equipe e ao histórico.
-8. Atualizar analytics e documentação operacional.
-9. Validar permissões e casos de duplicidade, concorrência, expiração e compatibilidade com cartões existentes.
+1. [x] Inspecionar rotas, componentes, serviços, migrations e políticas RLS existentes; confirmar o fluxo real de carimbo e resgate.
+2. [~] Definir formalmente ciclo da missão, eventos que contam, fuso horário e limite de repetição. (eventos e limite estao definidos; falta configurar o fuso da empresa).
+3. [x] Criar migration aditiva, constraints, índices, políticas e operações seguras para criar missão, atualizar progresso e resgatar recompensa.
+4. [x] Implementar tipos e acesso a dados no frontend sem duplicar regras de negócio no cliente.
+5. [x] Criar gerenciamento de missões no painel do proprietário.
+6. [x] Exibir progresso e conclusão na página pública do cartão.
+7. [x] Integrar conferência/entrega à interface da equipe e ao histórico.
+8. [~] Analytics de missões implementado; falta documentar o procedimento operacional.
+9. [~] Validar permissões e casos de duplicidade, concorrência, expiração e compatibilidade com cartões existentes (falta validar o fluxo integrado, inclusive concorrência e RLS).
 
 ## Fora do escopo inicial
 

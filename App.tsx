@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useCallback, useEffect, useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { Sidebar, NAV_ITEMS, SidebarContent } from './components/Sidebar';
-import { Template, Customer, IssuedCard, LoyaltyMission } from './types';
+import { Template, Customer, IssuedCard, LoyaltyMission, CustomerLoyaltyPoints } from './types';
 import { templates } from './data/templates';
 import { BrowserRouter, Routes, Route, Outlet, useParams, useNavigate, Navigate, useSearchParams, useLocation } from 'react-router-dom';
 import { Lock } from 'lucide-react';
@@ -14,6 +14,8 @@ import { RequireRole } from './components/RequireRole';
 import { VerifyBanner } from './components/VerifyBanner';
 import { fetchCampaigns, upsertCampaign, deleteCampaign as dbDeleteCampaign, setCampaignEnabled } from './lib/db/campaigns';
 import { fetchCustomersWithCards } from './lib/db/customers';
+import { parseCustomerLoyaltyPoints } from './lib/db/loyaltyPoints';
+import { PublicLoyaltyPoints } from './components/PublicLoyaltyPoints';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
 import { isSupabaseConfigured, supabase } from './lib/supabase';
@@ -178,6 +180,7 @@ const PublicCardWrapper: React.FC = () => {
     customer: Customer;
     template: Template;
     missions: LoyaltyMission[];
+    loyaltyPoints: CustomerLoyaltyPoints | null;
   } | null>(null);
 
   useEffect(() => {
@@ -188,6 +191,17 @@ const PublicCardWrapper: React.FC = () => {
         card_unique_id: uniqueId,
       });
       if (error || !data) { setLoading(false); return; }
+
+      let loyaltyPointsData: unknown = null;
+      try {
+        const { data, error: pointsError } = await supabase.rpc('get_public_loyalty_points', {
+          slug_input: slug,
+          card_unique_id: uniqueId,
+        });
+        if (!pointsError) loyaltyPointsData = data;
+      } catch {
+        // An unavailable points summary must not block the public card.
+      }
 
       const card: IssuedCard = {
         id: data.card.id,
@@ -238,6 +252,7 @@ const PublicCardWrapper: React.FC = () => {
         customer,
         template,
         missions: Array.isArray(data.missions) ? data.missions as LoyaltyMission[] : [],
+        loyaltyPoints: parseCustomerLoyaltyPoints(loyaltyPointsData),
       });
       setLoading(false);
     })();
@@ -259,7 +274,7 @@ const PublicCardWrapper: React.FC = () => {
     );
   }
 
-  const { card, customer, template, missions } = cardData;
+  const { card, customer, template, missions, loyaltyPoints } = cardData;
   const isRedeemed = card.status === 'Redeemed';
   const cardBackgroundHex = resolveHexAndOpacity(template.colors.background, '#f5f5f5').hex;
   const isDarkBackground = getHexLuminance(cardBackgroundHex) < 0.38;
@@ -315,6 +330,7 @@ const PublicCardWrapper: React.FC = () => {
           </div>
         )}
       </div>
+      <PublicLoyaltyPoints summary={loyaltyPoints} />
       {withSuspense(<MissionProgressList missions={missions} />)}
     </div>
   );

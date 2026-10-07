@@ -12,6 +12,7 @@ import { useLocale } from "./LocaleProvider";
 import { BUSINESS_CURRENCIES, formatCurrency, INTERFACE_LANGUAGES } from "../lib/i18n";
 import { updateCompanyLocalePreferences } from "../lib/db/profiles";
 import { LocalizedTree } from "./LocalizedTree";
+import { LoyaltyPointsSettings } from "./LoyaltyPointsSettings";
 
 const DELETE_CONFIRMATION = "DELETE";
 
@@ -234,6 +235,8 @@ export const SettingsPage: React.FC = () => {
           </div>
         </form>
       </section>
+
+      <LoyaltyPointsSettings />
 
       {/* Edit Profile */}
       <section className="rounded-2xl md:rounded-3xl border bg-white p-4 md:p-6 shadow-xs space-y-5">

@@ -58,6 +58,8 @@ All access starts at `/login`. There is no marketplace or multi-tenant public si
    - [`supabase/migration.sql`](supabase/migration.sql) is the canonical fresh-install script. It includes the current schema, RLS policies, storage policies, and RPC functions.
    - The smaller SQL files in [`supabase/legacy-patches/`](supabase/legacy-patches/) are upgrade or repair scripts for older or existing projects and are not part of the default new-project setup.
    - For an existing project, run [`supabase/legacy-patches/add_loyalty_missions.sql`](supabase/legacy-patches/add_loyalty_missions.sql) before deploying the matching application version. The patch adds the mission schema and secure RPCs; the current app continues to work while the deployment is prepared.
+   - After the mission patch, run [`supabase/legacy-patches/add_loyalty_points.sql`](supabase/legacy-patches/add_loyalty_points.sql) in the SQL Editor before deploying the points and levels interface. It adds the immutable points ledger, configurable levels, audited owner adjustments, milestone badges, and the public-card summary RPC.
+   - With the Supabase CLI logged in and this project linked, the same patch can be applied without Docker using `npx supabase db query --linked --file supabase/legacy-patches/add_loyalty_points.sql`.
    - For an existing project, also run [`supabase/legacy-patches/add_company_locale_preferences.sql`](supabase/legacy-patches/add_company_locale_preferences.sql) to persist the company's interface language and currency preferences.
    - [`supabase/seed.sql`](supabase/seed.sql) is for local or development environments only because it creates a known demo account.
 
