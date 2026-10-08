@@ -33,7 +33,7 @@
       "destination": "/api/sites-sitemap"
     },
     {
-      "source": "/((?!api/|assets/|.*\\..*).*)",
+      "source": "/((?!api/|assets/|@vite/|@react-refresh|@id/|@fs/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ]
