@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Trash2, Unplug } from 'lucide-react';
+import { Check, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Trash2, Unplug, X } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { useLocale } from './LocaleProvider';
 import {
@@ -15,11 +15,32 @@ import { Label } from './ui/label';
 
 type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed';
 type CommunicationChannel = 'whatsapp' | 'instagram';
+type TemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
+type TemplateButtonDraft = { type: TemplateButtonType; text: string; url?: string; phone_number?: string };
+type TemplateEventVariable = { key: string; sample: string };
 const EVENTS: { id: EventType; label: string; description: string }[] = [
   { id: 'visit_validated', label: 'Validated visit', description: 'After a staff member validates a visit.' },
   { id: 'mission_completed', label: 'Mission completed', description: 'When the customer completes a mission.' },
   { id: 'reward_claimed', label: 'Reward claimed', description: 'When the customer claims a catalog reward.' },
 ];
+const EVENT_VARIABLES: Record<EventType, TemplateEventVariable[]> = {
+  visit_validated: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'campaign_name', sample: 'Cartão de café' }, { key: 'stamps', sample: '4' },
+    { key: 'total_stamps', sample: '10' }, { key: 'stamps_remaining', sample: '6' },
+    { key: 'visit_date', sample: '08/10/2026' },
+  ],
+  mission_completed: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'mission_name', sample: 'Cliente frequente' }, { key: 'mission_reward', sample: 'Café grátis' },
+    { key: 'completion_number', sample: '1' },
+  ],
+  reward_claimed: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'reward_name', sample: 'Café grátis' }, { key: 'redemption_code', sample: 'AB12CD34' },
+    { key: 'reward_expires_at', sample: '15/10/2026' },
+  ],
+};
 
 type ProfileResponse = { profiles?: ZernioProfile[] };
 type TemplateResponse = { templates?: ZernioTemplate[]; mappings?: ZernioMapping[] };
@@ -42,11 +63,53 @@ type NotificationAttempt = {
 };
 type StatusResponse = { integration?: ZernioIntegrationStatus; mappings?: ZernioMapping[]; notifications?: NotificationRecord[]; attempts?: NotificationAttempt[] };
 
-const simpleTemplateBody = (template: ZernioTemplate) => {
+const editableTemplate = (template: ZernioTemplate) => {
   const components = template.components ?? [];
-  if (components.length !== 1 || String(components[0]?.type || '').toUpperCase() !== 'BODY') return null;
-  const text = components[0]?.text;
-  return typeof text === 'string' && !/\{\{[^{}]+\}\}/.test(text) ? text : null;
+  if (!components.every((component) => ['BODY', 'BUTTONS'].includes(String(component.type || '').toUpperCase()))) return null;
+  const body = components.find((component) => String(component.type || '').toUpperCase() === 'BODY');
+  if (typeof body?.text !== 'string') return null;
+  const bodyVariables = [...body.text.matchAll(/\{\{([^{}]+)\}\}/g)];
+  if (bodyVariables.some((match) => !/^[a-z][a-z0-9_]*$/.test(match[1])) || body.text.replace(/\{\{[^{}]+\}\}/g, '').match(/\{\{|\}\}/)) return null;
+  const buttonComponent = components.find((component) => String(component.type || '').toUpperCase() === 'BUTTONS');
+  const buttons = Array.isArray(buttonComponent?.buttons) ? buttonComponent.buttons.flatMap((value) => {
+    if (!value || typeof value !== 'object') return [];
+    const button = value as Record<string, unknown>;
+    const type = String(button.type || '').toUpperCase() as TemplateButtonType;
+    const text = typeof button.text === 'string' ? button.text : '';
+    if (!['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(type) || !text) return [];
+    if (type === 'URL') return typeof button.url === 'string' && !/\{\{[^{}]+\}\}/.test(button.url) ? [{ type, text, url: button.url }] : [];
+    if (type === 'PHONE_NUMBER') return typeof button.phone_number === 'string' ? [{ type, text, phone_number: button.phone_number }] : [];
+    return [{ type, text }];
+  }) : [];
+  if (buttonComponent && (!Array.isArray(buttonComponent.buttons) || buttons.length !== buttonComponent.buttons.length || buttons.length > 3)) return null;
+  return { body: body.text, buttons } as { body: string; buttons: TemplateButtonDraft[] };
+};
+
+const insertVariable = (
+  textarea: HTMLTextAreaElement | null,
+  value: string,
+  variable: string,
+  update: (next: string) => void,
+) => {
+  const token = `{{${variable}}}`;
+  if (!textarea) { update(value + token); return; }
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const next = value.slice(0, start) + token + value.slice(end);
+  update(next);
+  requestAnimationFrame(() => {
+    textarea.focus();
+    textarea.setSelectionRange(start + token.length, start + token.length);
+  });
+};
+
+const templateSupportsEvent = (template: ZernioTemplate, eventType: EventType) => {
+  const draft = editableTemplate(template);
+  if (!draft) return false;
+  const matches = [...draft.body.matchAll(/\{\{([^{}]+)\}\}/g)];
+  if (matches.length > 20 || matches.length !== template.parameterCount) return false;
+  const allowed = new Set(EVENT_VARIABLES[eventType].map((variable) => variable.key));
+  return matches.every((match) => /^[a-z][a-z0-9_]*$/.test(match[1]) && allowed.has(match[1]));
 };
 
 export const CommunicationsSettings: React.FC = () => {
@@ -62,8 +125,14 @@ export const CommunicationsSettings: React.FC = () => {
   const [newTemplateLanguage, setNewTemplateLanguage] = React.useState('pt_BR');
   const [newTemplateCategory, setNewTemplateCategory] = React.useState('UTILITY');
   const [newTemplateBody, setNewTemplateBody] = React.useState('');
+  const [newTemplateEventType, setNewTemplateEventType] = React.useState<EventType>('visit_validated');
+  const [newTemplateButtons, setNewTemplateButtons] = React.useState<TemplateButtonDraft[]>([]);
   const [editingTemplateKey, setEditingTemplateKey] = React.useState('');
   const [editingTemplateBody, setEditingTemplateBody] = React.useState('');
+  const [editingTemplateButtons, setEditingTemplateButtons] = React.useState<TemplateButtonDraft[]>([]);
+  const [editingTemplateEventType, setEditingTemplateEventType] = React.useState<EventType>('visit_validated');
+  const newTemplateBodyRef = React.useRef<HTMLTextAreaElement>(null);
+  const editingTemplateBodyRef = React.useRef<HTMLTextAreaElement>(null);
   const [selectedProfile, setSelectedProfile] = React.useState('');
   const [apiKey, setApiKey] = React.useState('');
   const [countryCode, setCountryCode] = React.useState('55');
@@ -124,6 +193,7 @@ export const CommunicationsSettings: React.FC = () => {
       setTemplates([]);
       setEditingTemplateKey('');
       setEditingTemplateBody('');
+      setEditingTemplateButtons([]);
     }
   }, []);
 
@@ -227,6 +297,7 @@ export const CommunicationsSettings: React.FC = () => {
       setProfiles([]);
       setEditingTemplateKey('');
       setEditingTemplateBody('');
+      setEditingTemplateButtons([]);
       await refreshStatus();
       setNotice(t('Zernio and its connected accounts were disconnected. The API key remains active in Zernio until you revoke it there.'));
     });
@@ -285,7 +356,7 @@ export const CommunicationsSettings: React.FC = () => {
     });
     await refreshStatus();
     if (enabled[eventType] && !response.enabled) {
-      setNotice(t('Template saved but not enabled. It must be approved and contain no variables.'));
+      setNotice(t('Template saved but not enabled. It must be approved and use supported variables for this event.'));
     } else {
       setNotice(t('Notification template saved.'));
     }
@@ -304,22 +375,27 @@ export const CommunicationsSettings: React.FC = () => {
       templateLanguage: newTemplateLanguage,
       category: newTemplateCategory,
       bodyText: newTemplateBody,
+      eventType: newTemplateEventType,
+      buttons: newTemplateButtons,
     });
     setNewTemplateName('');
     setNewTemplateBody('');
+    setNewTemplateButtons([]);
     await refreshStatus();
     setNotice(t('Template created and submitted for Meta review.'));
   });
 
   const beginEditTemplate = (template: ZernioTemplate) => {
-    const body = simpleTemplateBody(template);
-    if (body === null) {
-      setError(t('Only simple text-only templates without variables can be edited here.'));
+    const draft = editableTemplate(template);
+    if (draft === null) {
+      setError(t('This template contains components that are not supported by the editor.'));
       return;
     }
     setError('');
     setEditingTemplateKey(template.name + '::' + template.language);
-    setEditingTemplateBody(body);
+    setEditingTemplateBody(draft.body);
+    setEditingTemplateButtons(draft.buttons);
+    setEditingTemplateEventType(EVENTS.find((event) => selection[event.id] === template.name + '::' + template.language)?.id ?? 'visit_validated');
   };
 
   const saveTemplateEdit = (template: ZernioTemplate) => withBusy('template-edit', async () => {
@@ -328,9 +404,12 @@ export const CommunicationsSettings: React.FC = () => {
       templateName: template.name,
       templateLanguage: template.language,
       bodyText: editingTemplateBody,
+      eventType: editingTemplateEventType,
+      buttons: editingTemplateButtons,
     });
     setEditingTemplateKey('');
     setEditingTemplateBody('');
+    setEditingTemplateButtons([]);
     await refreshStatus();
     setNotice(t('Template updated and submitted for Meta review. Its notification mapping is disabled until approval.'));
   });
@@ -346,6 +425,129 @@ export const CommunicationsSettings: React.FC = () => {
   };
 
   const templatesByKey = new Map<string, ZernioTemplate>(templates.map((template): [string, ZernioTemplate] => [template.name + '::' + template.language, template]));
+  const renderVariablePicker = (
+    eventType: EventType,
+    value: string,
+    textareaRef: { current: HTMLTextAreaElement | null },
+    update: (next: string) => void,
+  ) => (
+    <div className="mt-2 space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground">{t('Insert a system variable')}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {EVENT_VARIABLES[eventType].map((variable) => (
+          <Button
+            key={variable.key}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 px-2 font-mono text-xs"
+            onClick={() => insertVariable(textareaRef.current, value, variable.key, update)}
+          >
+            {`{{${variable.key}}}`}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+  const renderButtonEditor = (
+    buttons: TemplateButtonDraft[],
+    update: React.Dispatch<React.SetStateAction<TemplateButtonDraft[]>>,
+    prefix: string,
+  ) => {
+    const quickReplyCount = buttons.filter((button) => button.type === 'QUICK_REPLY').length;
+    const callToActionButtons = buttons.filter((button) => button.type === 'URL' || button.type === 'PHONE_NUMBER');
+    const canAdd = quickReplyCount ? quickReplyCount < 3 : callToActionButtons.length < 2;
+    const addButtonType: TemplateButtonType = quickReplyCount || buttons.length === 0
+      ? 'QUICK_REPLY'
+      : callToActionButtons.some((button) => button.type === 'URL') ? 'PHONE_NUMBER' : 'URL';
+
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium">{t('Interactive buttons')}</p>
+            <p className="text-xs text-muted-foreground">{t('Use up to three quick replies, or one link and one call button.')}</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!canAdd}
+            onClick={() => update((current) => [...current, { type: addButtonType, text: '' }])}
+            className="w-full gap-1.5 sm:w-auto"
+          >
+            <Plus className="h-3.5 w-3.5" />{t('Add button')}
+          </Button>
+        </div>
+        {buttons.map((button, index) => {
+          const otherButtons = buttons.filter((_, itemIndex) => itemIndex !== index);
+          const otherHasQuick = otherButtons.some((item) => item.type === 'QUICK_REPLY');
+          const otherHasCta = otherButtons.some((item) => item.type !== 'QUICK_REPLY');
+          const urlTaken = otherButtons.some((item) => item.type === 'URL');
+          const phoneTaken = otherButtons.some((item) => item.type === 'PHONE_NUMBER');
+          return (
+            <div key={`${prefix}-${index}`} className="grid gap-2 rounded-xl border bg-muted/20 p-3 sm:grid-cols-[minmax(120px,0.7fr)_minmax(0,1fr)_auto] sm:items-end">
+              <div className="space-y-1">
+                <Label htmlFor={`${prefix}-type-${index}`}>{t('Button type')}</Label>
+                <select
+                  id={`${prefix}-type-${index}`}
+                  value={button.type}
+                  onChange={(event) => update((current) => current.map((item, itemIndex) => itemIndex === index
+                    ? { type: event.target.value as TemplateButtonType, text: item.text }
+                    : item))}
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="QUICK_REPLY" disabled={otherHasCta}>{t('Quick reply')}</option>
+                  <option value="URL" disabled={otherHasQuick || urlTaken}>{t('Open link')}</option>
+                  <option value="PHONE_NUMBER" disabled={otherHasQuick || phoneTaken}>{t('Call phone number')}</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`${prefix}-label-${index}`}>{t('Button label')}</Label>
+                <Input
+                  id={`${prefix}-label-${index}`}
+                  value={button.text}
+                  onChange={(event) => update((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))}
+                  maxLength={25}
+                  placeholder={t('Example: View my card')}
+                  className="h-10"
+                />
+              </div>
+              <Button type="button" variant="ghost" size="icon" aria-label={t('Remove button')} onClick={() => update((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="h-10 w-full sm:w-10">
+                <X className="h-4 w-4" />
+              </Button>
+              {button.type === 'URL' && (
+                <div className="space-y-1 sm:col-span-2">
+                  <Label htmlFor={`${prefix}-url-${index}`}>{t('HTTPS link')}</Label>
+                  <Input
+                    id={`${prefix}-url-${index}`}
+                    type="url"
+                    value={button.url ?? ''}
+                    onChange={(event) => update((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))}
+                    placeholder="https://exemplo.com/meu-cartao"
+                    className="h-10"
+                  />
+                </div>
+              )}
+              {button.type === 'PHONE_NUMBER' && (
+                <div className="space-y-1 sm:col-span-2">
+                  <Label htmlFor={`${prefix}-phone-${index}`}>{t('Phone number in international format')}</Label>
+                  <Input
+                    id={`${prefix}-phone-${index}`}
+                    type="tel"
+                    value={button.phone_number ?? ''}
+                    onChange={(event) => update((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, phone_number: event.target.value } : item))}
+                    placeholder="+5511999999999"
+                    className="h-10"
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <section className="space-y-5">
@@ -471,7 +673,7 @@ export const CommunicationsSettings: React.FC = () => {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="font-semibold">{t('WhatsApp notification templates')}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{t('Only approved templates without variables can be enabled for automatic notifications in this first version.')}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('Approved templates can include Stampfy variables and interactive buttons. Messages are sent only to customers who opted in to WhatsApp notifications.')}</p>
               </div>
               <Button type="button" variant="outline" onClick={refreshTemplates} disabled={busy !== ''} className="gap-2">
                 {busy === 'templates' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -512,7 +714,7 @@ export const CommunicationsSettings: React.FC = () => {
                       <option value="">{t('Choose a template')}</option>
                       {templates.map((template) => <option key={template.name + '::' + template.language} value={template.name + '::' + template.language}>{template.name} · {template.language} · {template.status}{template.parameterCount ? ' · ' + template.parameterCount + ' ' + t('variables') : ''}</option>)}
                     </select>
-                    {selectedTemplate && <p className="text-xs text-muted-foreground">{t('Template status')}: {selectedTemplate.status}. {selectedTemplate.parameterCount ? t('Templates with variables are not sent in this version.') : ''}</p>}
+                    {selectedTemplate && <p className="text-xs text-muted-foreground">{t('Template status')}: {selectedTemplate.status}. {!templateSupportsEvent(selectedTemplate, event.id) ? t(selectedTemplate.parameterCount ? 'This template has variables that are unavailable for this event.' : 'This template cannot be used with this event.') : ''}</p>}
                   </div>
                   <div className="flex items-end">
                     <Button type="button" onClick={() => void saveMapping(event.id)} disabled={!currentKey || busy !== ''} className="w-full gap-2 sm:w-auto">
@@ -526,10 +728,10 @@ export const CommunicationsSettings: React.FC = () => {
                     type="checkbox"
                     checked={enabled[event.id]}
                     onChange={(inputEvent) => setEnabled((current) => ({ ...current, [event.id]: inputEvent.target.checked }))}
-                    disabled={!selectedTemplate || selectedTemplate.status !== 'APPROVED' || selectedTemplate.parameterCount !== 0}
+                    disabled={!selectedTemplate || selectedTemplate.status !== 'APPROVED' || !templateSupportsEvent(selectedTemplate, event.id)}
                     className="mt-1 h-4 w-4 accent-foreground"
                   />
-                  <span>{t('Enable automatic message for this event (requires an approved template with no variables).')}</span>
+                  <span>{t('Enable automatic message for this event (requires an approved template with supported variables).')}</span>
                 </label>
               </div>
             );
@@ -537,7 +739,7 @@ export const CommunicationsSettings: React.FC = () => {
 
           <div className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
             <h3 className="font-semibold">{t('Manage WhatsApp templates')}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{t('New and edited templates must pass Meta review. Editing disables the related notification until approval.')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{t('Create event messages with Stampfy variables and interactive buttons. Meta must approve each template before it can be sent.')}</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="new-template-name">{t('Template name')}</Label>
@@ -557,12 +759,20 @@ export const CommunicationsSettings: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-1.5 md:col-span-2">
-                <Label htmlFor="new-template-body">{t('Message text')}</Label>
-                <textarea id="new-template-body" value={newTemplateBody} onChange={(event) => setNewTemplateBody(event.target.value)} maxLength={1024} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={t('Write a message without variables.')} />
-                <p className="text-xs text-muted-foreground">{t('Simple text-only templates without variables are supported here.')}</p>
+                <Label htmlFor="new-template-event">{t('Variables for event')}</Label>
+                <select id="new-template-event" value={newTemplateEventType} onChange={(event) => setNewTemplateEventType(event.target.value as EventType)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:max-w-md">
+                  {EVENTS.map((event) => <option key={event.id} value={event.id}>{t(event.label)}</option>)}
+                </select>
+                <Label htmlFor="new-template-body" className="mt-3 block">{t('Message text')}</Label>
+                <textarea ref={newTemplateBodyRef} id="new-template-body" value={newTemplateBody} onChange={(event) => setNewTemplateBody(event.target.value)} maxLength={1024} rows={4} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={t('Example: Hello {{customer_name}}, your visit was validated!')} />
+                {renderVariablePicker(newTemplateEventType, newTemplateBody, newTemplateBodyRef, setNewTemplateBody)}
+                <p className="text-xs text-muted-foreground">{t('Use the variable buttons to insert values that Stampfy fills in when the event happens.')}</p>
               </div>
               <div className="md:col-span-2">
-                <Button type="button" onClick={createTemplate} disabled={busy !== '' || !newTemplateName.trim() || !newTemplateLanguage.trim() || !newTemplateBody.trim()} className="w-full gap-2 sm:w-auto">
+                {renderButtonEditor(newTemplateButtons, setNewTemplateButtons, 'new-template-button')}
+              </div>
+              <div className="md:col-span-2">
+                <Button type="button" onClick={createTemplate} disabled={busy !== '' || !newTemplateName.trim() || !newTemplateLanguage.trim() || !newTemplateBody.trim() || newTemplateButtons.some((button) => !button.text.trim() || (button.type === 'URL' && !button.url?.trim()) || (button.type === 'PHONE_NUMBER' && !button.phone_number?.trim()))} className="w-full gap-2 sm:w-auto">
                   {busy === 'template-create' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   {t('Create template')}
                 </Button>
@@ -572,7 +782,8 @@ export const CommunicationsSettings: React.FC = () => {
               <ul className="mt-5 divide-y rounded-xl border">
                 {templates.map((template) => {
                   const key = template.name + '::' + template.language;
-                  const editable = simpleTemplateBody(template) !== null && ['APPROVED', 'REJECTED', 'PAUSED'].includes(template.status);
+                  const editableDraft = editableTemplate(template);
+                  const editable = editableDraft !== null && ['APPROVED', 'REJECTED', 'PAUSED'].includes(template.status);
                   return (
                     <li key={key} className="p-3 sm:p-4">
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -590,9 +801,19 @@ export const CommunicationsSettings: React.FC = () => {
                         </div>
                       </div>
                       {editingTemplateKey === key && (
-                        <div className="mt-3 space-y-2">
-                          <Label htmlFor={'edit-template-' + key}>{t('Message text')}</Label>
-                          <textarea id={'edit-template-' + key} value={editingTemplateBody} onChange={(event) => setEditingTemplateBody(event.target.value)} maxLength={1024} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                        <div className="mt-3 space-y-4">
+                          <div className="space-y-2">
+                            <Label htmlFor={'edit-template-event-' + key}>{t('Variables for event')}</Label>
+                            <select id={'edit-template-event-' + key} value={editingTemplateEventType} onChange={(event) => setEditingTemplateEventType(event.target.value as EventType)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:max-w-md">
+                              {EVENTS.map((event) => <option key={event.id} value={event.id}>{t(event.label)}</option>)}
+                            </select>
+                            <Label htmlFor={'edit-template-' + key} className="mt-2 block">{t('Message text')}</Label>
+                            <textarea ref={editingTemplateBodyRef} id={'edit-template-' + key} value={editingTemplateBody} onChange={(event) => setEditingTemplateBody(event.target.value)} maxLength={1024} rows={4} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                            {editableDraft?.body.includes('{{')
+                              ? renderVariablePicker(editingTemplateEventType, editingTemplateBody, editingTemplateBodyRef, setEditingTemplateBody)
+                              : <p className="text-xs text-muted-foreground">{t('To add variables, create a new WhatsApp template.')}</p>}
+                          </div>
+                          {renderButtonEditor(editingTemplateButtons, setEditingTemplateButtons, 'edit-template-button-' + key)}
                           <div className="flex flex-col gap-2 sm:flex-row">
                             <Button type="button" onClick={() => saveTemplateEdit(template)} disabled={busy !== '' || !editingTemplateBody.trim()} className="gap-2"><Save className="h-4 w-4" />{t('Save and submit for review')}</Button>
                             <Button type="button" variant="outline" onClick={() => setEditingTemplateKey('')} disabled={busy !== ''}>{t('Cancel')}</Button>

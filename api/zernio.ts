@@ -252,6 +252,20 @@ const getProviderKey = async (integration: IntegrationRow) => {
 };
 
 const eventTypes = new Set(['visit_validated', 'mission_completed', 'reward_claimed']);
+const eventVariableSamples: Record<string, Record<string, string>> = {
+  visit_validated: {
+    customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
+    stamps: '4', total_stamps: '10', stamps_remaining: '6', visit_date: '08/10/2026',
+  },
+  mission_completed: {
+    customer_name: 'Ana', business_name: 'Café Central', mission_name: 'Cliente frequente',
+    mission_reward: 'Café grátis', completion_number: '1',
+  },
+  reward_claimed: {
+    customer_name: 'Ana', business_name: 'Café Central', reward_name: 'Café grátis',
+    redemption_code: 'AB12CD34', reward_expires_at: '15/10/2026',
+  },
+};
 const extractTemplateParameterCount = (template: Record<string, unknown>) => {
   const components = Array.isArray(template.components) ? template.components : [];
   let count = 0;
@@ -264,6 +278,102 @@ const extractTemplateParameterCount = (template: Record<string, unknown>) => {
     }
   }
   return count;
+};
+
+const templateVariableOccurrences = (text: string) => [...text.matchAll(/\{\{([^{}]+)\}\}/g)].map((match) => match[1]);
+const hasMalformedTemplateVariables = (text: string) => {
+  const withoutVariables = text.replace(/\{\{[^{}]+\}\}/g, '');
+  return withoutVariables.includes('{{') || withoutVariables.includes('}}');
+};
+
+const buildTemplateComponents = (bodyText: string, rawButtons: unknown, eventType: string) => {
+  const eventSamples = eventVariableSamples[eventType];
+  if (!eventSamples) throw new ApiFailure('Choose a valid event to configure its variables.');
+  const variables = templateVariableOccurrences(bodyText);
+  if (hasMalformedTemplateVariables(bodyText) || variables.length > 20) {
+    throw new ApiFailure('Use valid Stampfy variables and no more than 20 placeholders.');
+  }
+  if (variables.some((variable) => !/^[a-z][a-z0-9_]{0,49}$/.test(variable) || !(variable in eventSamples))) {
+    throw new ApiFailure('This template uses a variable that is unavailable for the selected event.');
+  }
+  const components: Array<Record<string, unknown>> = [{
+    type: 'body',
+    text: bodyText,
+    ...(variables.length ? {
+      example: {
+        body_text_named_params: [...new Set(variables)].map((paramName) => ({
+          param_name: paramName,
+          example: eventSamples[paramName],
+        })),
+      },
+    } : {}),
+  }];
+  const buttons = Array.isArray(rawButtons) ? rawButtons : [];
+  if (buttons.length > 3) throw new ApiFailure('WhatsApp templates can have at most three buttons.');
+  const normalizedButtons = buttons.map((candidate) => {
+    if (!candidate || typeof candidate !== 'object') throw new ApiFailure('Complete each interactive button before saving.');
+    const button = candidate as Record<string, unknown>;
+    const type = typeof button.type === 'string' ? button.type.toUpperCase() : '';
+    const text = typeof button.text === 'string' ? button.text.trim() : '';
+    if (!['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(type) || !text || text.length > 25) {
+      throw new ApiFailure('Each button needs a supported type and a label of up to 25 characters.');
+    }
+    if (type === 'URL') {
+      const url = typeof button.url === 'string' ? button.url.trim() : '';
+      let parsedUrl: URL;
+      try { parsedUrl = new URL(url); } catch { throw new ApiFailure('Enter a valid HTTPS link for the URL button.'); }
+      if (parsedUrl.protocol !== 'https:' || url.length > 2000 || /\{\{[^{}]+\}\}/.test(url)) {
+        throw new ApiFailure('URL buttons must use a static HTTPS link.');
+      }
+      return { type, text, url };
+    }
+    if (type === 'PHONE_NUMBER') {
+      const phoneNumber = typeof button.phone_number === 'string' ? button.phone_number.trim() : '';
+      if (!/^\+[1-9]\d{7,14}$/.test(phoneNumber)) throw new ApiFailure('Enter the call button number in international format, such as +5511999999999.');
+      return { type, text, phone_number: phoneNumber };
+    }
+    return { type, text };
+  });
+  const quickReplyCount = normalizedButtons.filter((button) => button.type === 'QUICK_REPLY').length;
+  const callToActionButtons = normalizedButtons.filter((button) => button.type === 'URL' || button.type === 'PHONE_NUMBER');
+  if (quickReplyCount && callToActionButtons.length) throw new ApiFailure('Use quick reply buttons or call-to-action buttons in a template, not both.');
+  if (quickReplyCount > 3 || callToActionButtons.length > 2
+    || new Set(callToActionButtons.map((button) => button.type)).size !== callToActionButtons.length) {
+    throw new ApiFailure('Use up to three quick replies or one link and one phone button.');
+  }
+  if (normalizedButtons.length) components.push({ type: 'buttons', buttons: normalizedButtons });
+  return { components, variables };
+};
+
+const templateSupportsEvent = (template: Record<string, unknown>, eventType: string) => {
+  const samples = eventVariableSamples[eventType];
+  if (!samples) return false;
+  const components = Array.isArray(template.components)
+    ? template.components.filter((component): component is Record<string, unknown> => Boolean(component && typeof component === 'object'))
+    : [];
+  const bodyComponents = components.filter((component) => String(component.type || '').toUpperCase() === 'BODY');
+  if (bodyComponents.length !== 1 || components.some((component) => !['BODY', 'BUTTONS'].includes(String(component.type || '').toUpperCase()))) return false;
+  const body = typeof bodyComponents[0].text === 'string' ? bodyComponents[0].text : '';
+  const variables = templateVariableOccurrences(body);
+  if (hasMalformedTemplateVariables(body) || variables.length > 20 || variables.length !== extractTemplateParameterCount(template)) return false;
+  if (variables.some((variable) => !/^[a-z][a-z0-9_]{0,49}$/.test(variable) || !(variable in samples))) return false;
+  const buttonComponent = components.find((component) => String(component.type || '').toUpperCase() === 'BUTTONS');
+  if (buttonComponent) {
+    if (!Array.isArray(buttonComponent.buttons) || buttonComponent.buttons.length > 3) return false;
+    const normalizedTypes: string[] = [];
+    for (const candidate of buttonComponent.buttons) {
+      if (!candidate || typeof candidate !== 'object') return false;
+      const button = candidate as Record<string, unknown>;
+      const type = String(button.type || '').toUpperCase();
+      if (!['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(type)) return false;
+      normalizedTypes.push(type);
+      if (type === 'URL' && (typeof button.url !== 'string' || /\{\{[^{}]+\}\}/.test(button.url))) return false;
+    }
+    const quickCount = normalizedTypes.filter((type) => type === 'QUICK_REPLY').length;
+    const ctaTypes = normalizedTypes.filter((type) => type === 'URL' || type === 'PHONE_NUMBER');
+    if ((quickCount && ctaTypes.length) || quickCount > 3 || ctaTypes.length > 2 || new Set(ctaTypes).size !== ctaTypes.length) return false;
+  }
+  return true;
 };
 
 const loadTemplates = async (apiKey: string, accountId: string) => {
@@ -290,12 +400,23 @@ const templateFromResponse = (response: Record<string, unknown>) => {
 };
 
 const validTemplateLanguage = (language: string) => /^[a-z]{2,3}(?:_[A-Z]{2,3})?$/.test(language);
-const containsTemplateVariables = (text: string) => /\{\{[^{}]+\}\}/.test(text);
 
 const ownerMappings = async (ownerId: string) => restRequest<Array<Record<string, unknown>>>(
   'company_notification_templates?owner_id=eq.' + encodeURIComponent(ownerId) + '&select=event_type,template_name,template_language,template_status,template_parameter_count,enabled,account_id',
   'GET',
 );
+
+const hasCommunicationCapability = async (capability: string) => {
+  try {
+    const rows = await restRequest<Array<{ capability: string }>>(
+      'communication_schema_capabilities?capability=eq.' + encodeURIComponent(capability) + '&select=capability',
+      'GET',
+    );
+    return rows.some((row) => row.capability === capability);
+  } catch {
+    return false;
+  }
+};
 
 const handleAction = async (request: Request, body: Record<string, unknown>) => {
   const context = await getOwnerContext(request);
@@ -529,10 +650,12 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
     const language = typeof body.templateLanguage === 'string' ? body.templateLanguage.trim() : '';
     const category = typeof body.category === 'string' ? body.category.toUpperCase() : '';
     const text = typeof body.bodyText === 'string' ? body.bodyText.trim() : '';
+    const eventType = typeof body.eventType === 'string' ? body.eventType : '';
     if (!/^[a-z][a-z0-9_]{0,511}$/.test(name)) throw new ApiFailure('Use a template name with lowercase letters, numbers, or underscores, starting with a letter.');
     if (!validTemplateLanguage(language)) throw new ApiFailure('Enter a valid template language code, such as pt_BR, en, or es.');
     if (!['UTILITY', 'MARKETING'].includes(category)) throw new ApiFailure('Choose a utility or marketing template category.');
-    if (!text || text.length > 1024 || containsTemplateVariables(text)) throw new ApiFailure('Enter a text-only message of up to 1024 characters without variables.');
+    if (!text || text.length > 1024) throw new ApiFailure('Enter a message of up to 1024 characters.');
+    const built = buildTemplateComponents(text, body.buttons, eventType);
 
     const created = await providerRequest(apiKey, '/whatsapp/templates', {
       method: 'POST',
@@ -541,7 +664,8 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
         name,
         category,
         language,
-        components: [{ type: 'body', text }],
+        ...(built.variables.length ? { parameter_format: 'NAMED' } : {}),
+        components: built.components,
       }),
     });
     return respond({ ok: true, template: templateFromResponse(created) });
@@ -552,16 +676,23 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
     const name = typeof body.templateName === 'string' ? body.templateName.trim() : '';
     const language = typeof body.templateLanguage === 'string' ? body.templateLanguage.trim() : '';
     const text = typeof body.bodyText === 'string' ? body.bodyText.trim() : '';
+    const eventType = typeof body.eventType === 'string' ? body.eventType : '';
     if (!/^[a-z][a-z0-9_]{0,511}$/.test(name) || !validTemplateLanguage(language)) throw new ApiFailure('Choose an exact WhatsApp template name and language.');
-    if (!text || text.length > 1024 || containsTemplateVariables(text)) throw new ApiFailure('Enter a text-only message of up to 1024 characters without variables.');
+    if (!text || text.length > 1024) throw new ApiFailure('Enter a message of up to 1024 characters.');
+    const built = buildTemplateComponents(text, body.buttons, eventType);
 
     const selected = (await loadTemplates(apiKey, integration.whatsapp_account_id))
       .find((template) => template.name === name && template.language === language);
     if (!selected) throw new ApiFailure('That template variant was not found on the connected WhatsApp account.');
     if (!['APPROVED', 'REJECTED', 'PAUSED'].includes(selected.status)) throw new ApiFailure('This template cannot be edited while Meta is reviewing or removing it.');
     const components = selected.components as Array<Record<string, unknown>>;
-    if (components.length !== 1 || String(components[0]?.type || '').toUpperCase() !== 'BODY' || typeof components[0]?.text !== 'string') {
-      throw new ApiFailure('Only simple text-only templates can be edited here.');
+    if (!components?.length || components.some((component) => !['BODY', 'BUTTONS'].includes(String(component.type || '').toUpperCase()))) {
+      throw new ApiFailure('This template contains components that are not supported by the editor.');
+    }
+    const existingBody = components.find((component) => String(component.type || '').toUpperCase() === 'BODY');
+    const existingVariables = typeof existingBody?.text === 'string' ? templateVariableOccurrences(existingBody.text) : [];
+    if (built.variables.length && (!existingVariables.length || existingVariables.some((variable) => !/^[a-z][a-z0-9_]{0,49}$/.test(variable)))) {
+      throw new ApiFailure('Meta does not allow adding named variables to an existing template. Create a new template to use variables.');
     }
 
     const updated = await providerRequest(apiKey, '/whatsapp/templates/' + encodeURIComponent(name), {
@@ -569,7 +700,7 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
       body: JSON.stringify({
         accountId: integration.whatsapp_account_id,
         language,
-        components: [{ type: 'body', text }],
+        components: built.components,
       }),
     });
     try {
@@ -624,7 +755,13 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
     const remoteTemplates = await loadTemplates(apiKey, integration.whatsapp_account_id);
     const selected = remoteTemplates.find((template) => template.name === name && template.language === language);
     if (!selected) throw new ApiFailure('That template variant was not found on the connected WhatsApp account.');
-    const enabled = enabledRequested && selected.status === 'APPROVED' && selected.parameterCount === 0;
+    if (selected.parameterCount > 20) throw new ApiFailure('WhatsApp templates can use at most 20 Stampfy variable placeholders.');
+    const compatible = templateSupportsEvent(selected as unknown as Record<string, unknown>, eventType);
+    if (enabledRequested && compatible && selected.parameterCount > 0
+      && !await hasCommunicationCapability('whatsapp_named_template_variables_v1')) {
+      throw new ApiFailure('Apply add_whatsapp_interactive_templates.sql in Supabase before enabling templates with variables.', 409);
+    }
+    const enabled = enabledRequested && selected.status === 'APPROVED' && compatible;
     await restRequest(
       'company_notification_templates?on_conflict=owner_id,event_type',
       'POST',
@@ -640,7 +777,7 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
         updated_at: new Date().toISOString(),
       },
     );
-    return respond({ ok: true, enabled, template: selected });
+    return respond({ ok: true, enabled, compatible, template: selected });
   }
 
   if (action === 'retry_notification') {

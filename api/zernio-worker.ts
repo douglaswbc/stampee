@@ -94,19 +94,139 @@ const templateComponents = (value: unknown) => {
   return value.flatMap((component) => component && typeof component === 'object' ? [component as Record<string, unknown>] : []);
 };
 
-const hasTemplateVariables = (template: Record<string, unknown>) => {
-  for (const component of templateComponents(template.components)) {
-    const texts = [component.text];
-    if (Array.isArray(component.buttons)) {
-      for (const button of component.buttons) {
-        if (button && typeof button === 'object') texts.push((button as Record<string, unknown>).url);
+const eventVariableKeys: Record<string, Set<string>> = {
+  visit_validated: new Set(['customer_name', 'business_name', 'campaign_name', 'stamps', 'total_stamps', 'stamps_remaining', 'visit_date']),
+  mission_completed: new Set(['customer_name', 'business_name', 'mission_name', 'mission_reward', 'completion_number']),
+  reward_claimed: new Set(['customer_name', 'business_name', 'reward_name', 'redemption_code', 'reward_expires_at']),
+};
+
+const readFirst = async <T = Record<string, unknown>>(path: string) => {
+  const rows = await restFetch(path, 'GET') as T[] | null;
+  return rows?.[0] ?? null;
+};
+
+const loadEventVariables = async (notification: ClaimedNotification, eventKey: string, requiredKeys: string[]) => {
+  const values: Record<string, string> = {};
+  if (requiredKeys.includes('customer_name')) values.customer_name = notification.customer_name || '';
+  if (requiredKeys.includes('business_name')) {
+    const profile = await readFirst<{ business_name: string }>(
+      'profiles?id=eq.' + encodeURIComponent(notification.owner_id) + '&select=business_name',
+    );
+    values.business_name = profile?.business_name || '';
+  }
+
+  if (notification.event_type === 'visit_validated') {
+    const match = /^visit:([0-9a-f-]{36})$/i.exec(eventKey);
+    if (!match) return null;
+    const transaction = await readFirst<{ card_id: string; date: string }>(
+      'transactions?id=eq.' + encodeURIComponent(match[1]) + '&select=card_id,date',
+    );
+    if (!transaction?.card_id) return null;
+    const card = await readFirst<{ campaign_name: string; stamps: number; campaign_id: string | null }>(
+      'issued_cards?id=eq.' + encodeURIComponent(transaction.card_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&select=campaign_name,stamps,campaign_id',
+    );
+    if (!card) return null;
+    const campaign = card.campaign_id ? await readFirst<{ name: string; total_stamps: number }>(
+      'campaigns?id=eq.' + encodeURIComponent(card.campaign_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&select=name,total_stamps',
+    ) : null;
+    const total = Number(campaign?.total_stamps || 0);
+    const stamps = Number(card.stamps || 0);
+    values.campaign_name = card.campaign_name || campaign?.name || '';
+    values.stamps = String(stamps);
+    values.total_stamps = String(total);
+    values.stamps_remaining = String(Math.max(0, total - stamps));
+    values.visit_date = transaction.date || '';
+  } else if (notification.event_type === 'mission_completed') {
+    const match = /^mission:([0-9a-f-]{36})$/i.exec(eventKey);
+    if (!match) return null;
+    const completion = await readFirst<{ mission_id: string; reward_description: string; completion_number: number }>(
+      'mission_completions?id=eq.' + encodeURIComponent(match[1])
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&select=mission_id,reward_description,completion_number',
+    );
+    if (!completion) return null;
+    const mission = await readFirst<{ name: string }>(
+      'loyalty_missions?id=eq.' + encodeURIComponent(completion.mission_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&select=name',
+    );
+    if (!mission) return null;
+    values.mission_name = mission.name || '';
+    values.mission_reward = completion.reward_description || '';
+    values.completion_number = String(completion.completion_number || 1);
+  } else if (notification.event_type === 'reward_claimed') {
+    const match = /^reward:([0-9a-f-]{36})$/i.exec(eventKey);
+    if (!match) return null;
+    const redemption = await readFirst<{ reward_name: string; redemption_code: string; expires_at: string }>(
+      'loyalty_reward_redemptions?id=eq.' + encodeURIComponent(match[1])
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&select=reward_name,redemption_code,expires_at',
+    );
+    if (!redemption) return null;
+    values.reward_name = redemption.reward_name || '';
+    values.redemption_code = redemption.redemption_code || '';
+    const expiresAt = new Date(redemption.expires_at);
+    const locale = notification.template_language.toLowerCase().startsWith('pt')
+      ? 'pt-BR'
+      : notification.template_language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US';
+    values.reward_expires_at = Number.isNaN(expiresAt.getTime()) ? '' : expiresAt.toLocaleDateString(locale, { timeZone: 'UTC' });
+  }
+
+  return requiredKeys.every((key) => Boolean(values[key]?.trim())) ? values : null;
+};
+
+const templateParameterNames = (template: Record<string, unknown>, eventType: string) => {
+  const allowed = eventVariableKeys[eventType];
+  if (!allowed) return null;
+  const components = templateComponents(template.components);
+  const bodies = components.filter((component) => String(component.type || '').toUpperCase() === 'BODY');
+  if (bodies.length !== 1 || components.some((component) => !['BODY', 'BUTTONS'].includes(String(component.type || '').toUpperCase()))) return null;
+  const body = typeof bodies[0].text === 'string' ? bodies[0].text : '';
+  const names = [...body.matchAll(/\{\{([^{}]+)\}\}/g)].map((match) => match[1]);
+  const bodyWithoutVariables = body.replace(/\{\{[^{}]+\}\}/g, '');
+  if (bodyWithoutVariables.includes('{{') || bodyWithoutVariables.includes('}}')) return null;
+  if (names.some((name) => !/^[a-z][a-z0-9_]{0,49}$/.test(name) || !allowed.has(name))) return null;
+  for (const component of components) {
+    const type = String(component.type || '').toUpperCase();
+    if (type === 'BUTTONS') {
+      if (!Array.isArray(component.buttons) || component.buttons.length > 3) return null;
+      const buttonTypes: string[] = [];
+      for (const rawButton of component.buttons) {
+        if (!rawButton || typeof rawButton !== 'object') return null;
+        const button = rawButton as Record<string, unknown>;
+        const buttonType = String(button.type || '').toUpperCase();
+        if (!['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(buttonType)) return null;
+        buttonTypes.push(buttonType);
+        if (buttonType === 'URL' && (typeof button.url !== 'string' || /\{\{[^{}]+\}\}/.test(button.url))) return null;
       }
-    }
-    for (const value of texts) {
-      if (typeof value === 'string' && /\{\{[^{}]+\}\}/.test(value)) return true;
+      const quickCount = buttonTypes.filter((buttonType) => buttonType === 'QUICK_REPLY').length;
+      const callToActionButtons = buttonTypes.filter((buttonType) => buttonType === 'URL' || buttonType === 'PHONE_NUMBER');
+      if ((quickCount && callToActionButtons.length) || quickCount > 3 || callToActionButtons.length > 2
+        || new Set(callToActionButtons).size !== callToActionButtons.length) return null;
     }
   }
-  return false;
+  return names;
+};
+
+const resolveTemplateParams = async (notification: ClaimedNotification, template: Record<string, unknown>) => {
+  const names = templateParameterNames(template, notification.event_type);
+  if (!names) return null;
+  if (!names.length) return [];
+  const outbox = await readFirst<{ event_key: string }>(
+    'communication_notification_outbox?id=eq.' + encodeURIComponent(notification.outbox_id)
+      + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+      + '&status=eq.processing&select=event_key',
+  );
+  if (!outbox?.event_key) return null;
+  const values = await loadEventVariables(notification, outbox.event_key, [...new Set(names)]);
+  if (!values) return null;
+  return names.map((name) => values[name]);
 };
 
 const providerTemplate = async (apiKey: string, accountId: string, name: string, language: string) => {
@@ -173,8 +293,13 @@ const processNotification = async (notification: ClaimedNotification) => {
 
     const apiKey = await decryptSecret(integration.zernio_api_key_ciphertext);
     const template = await providerTemplate(apiKey, notification.account_id, notification.template_name, notification.template_language);
-    if (!template || String(template.status || '').toUpperCase() !== 'APPROVED' || hasTemplateVariables(template)) {
-      await finish(notification.outbox_id, 'skipped', 'template_not_approved_or_unsupported');
+    if (!template || String(template.status || '').toUpperCase() !== 'APPROVED') {
+      await finish(notification.outbox_id, 'skipped', 'template_not_approved');
+      return { outcome: 'skipped' };
+    }
+    const templateParams = await resolveTemplateParams(notification, template);
+    if (templateParams === null) {
+      await finish(notification.outbox_id, 'skipped', 'template_variables_unavailable');
       return { outcome: 'skipped' };
     }
     if (!await maySend(notification)) {
@@ -194,7 +319,7 @@ const processNotification = async (notification: ClaimedNotification) => {
         participantId: notification.participant_id,
         templateName: notification.template_name,
         templateLanguage: notification.template_language,
-        templateParams: [],
+        templateParams,
       }),
     });
     const result = await parseObject(response);
