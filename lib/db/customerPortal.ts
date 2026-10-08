@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import type { CustomerEngagementHistoryItem } from './customerEngagement';
 
 export interface CustomerPortalCard {
   uniqueId: string;
@@ -21,6 +22,8 @@ export interface CustomerPortalBusiness {
   whatsappLoyaltyEnabled: boolean;
   pushLoyaltyEnabled: boolean;
   hasPushSubscription: boolean;
+  whatsappMarketingEnabled: boolean;
+  pushMarketingEnabled: boolean;
   cards: CustomerPortalCard[];
   pointsBalance: number;
   pointsHistory: Array<{ delta: number; description: string; createdAt: string }>;
@@ -49,6 +52,7 @@ export interface CustomerPortalBusiness {
 export interface CustomerPortalData {
   email: string;
   businesses: CustomerPortalBusiness[];
+  engagementNotifications: CustomerEngagementHistoryItem[];
 }
 
 export async function initializeCustomerPortal(): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -57,25 +61,39 @@ export async function initializeCustomerPortal(): Promise<{ ok: true } | { ok: f
 }
 
 export async function fetchCustomerPortalData(): Promise<CustomerPortalData | null> {
-  const [{ data, error }, { data: pushData }] = await Promise.all([
+  const [{ data, error }, { data: pushData }, { data: historyData }] = await Promise.all([
     supabase.rpc('get_customer_portal_data'),
     supabase.rpc('get_customer_portal_push_preferences'),
+    supabase.rpc('get_customer_portal_engagement_history'),
   ]);
   if (error || !data || typeof data !== 'object') return null;
   const payload = data as Partial<CustomerPortalData>;
   if (typeof payload.email !== 'string' || !Array.isArray(payload.businesses)) return null;
   const pushPreferences = Array.isArray(pushData) ? pushData as Array<{
     ownerId?: unknown; customerId?: unknown; enabled?: unknown; hasSubscription?: unknown;
+    whatsappMarketingEnabled?: unknown; pushMarketingEnabled?: unknown;
   }> : [];
   const pushByCustomer = new Map(pushPreferences.map(preference => [
     `${String(preference.ownerId)}:${String(preference.customerId)}`,
-    { enabled: preference.enabled === true, hasSubscription: preference.hasSubscription === true },
+    {
+      enabled: preference.enabled === true,
+      hasSubscription: preference.hasSubscription === true,
+      whatsappMarketingEnabled: preference.whatsappMarketingEnabled === true,
+      pushMarketingEnabled: preference.pushMarketingEnabled === true,
+    },
   ]));
   return {
     ...(payload as CustomerPortalData),
+    engagementNotifications: Array.isArray(historyData) ? historyData as CustomerEngagementHistoryItem[] : [],
     businesses: payload.businesses.map(business => {
       const push = pushByCustomer.get(`${business.ownerId}:${business.customerId}`);
-      return { ...business, pushLoyaltyEnabled: push?.enabled ?? false, hasPushSubscription: push?.hasSubscription ?? false };
+      return {
+        ...business,
+        pushLoyaltyEnabled: push?.enabled ?? false,
+        hasPushSubscription: push?.hasSubscription ?? false,
+        whatsappMarketingEnabled: push?.whatsappMarketingEnabled ?? false,
+        pushMarketingEnabled: push?.pushMarketingEnabled ?? false,
+      };
     }),
   };
 }

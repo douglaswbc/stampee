@@ -13,7 +13,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 
-type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed';
+type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring';
 type CommunicationChannel = 'whatsapp' | 'instagram';
 type TemplateButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER';
 type TemplateButtonDraft = { type: TemplateButtonType; text: string; url?: string; phone_number?: string };
@@ -22,6 +22,9 @@ const EVENTS: { id: EventType; label: string; description: string }[] = [
   { id: 'visit_validated', label: 'Validated visit', description: 'After a staff member validates a visit.' },
   { id: 'mission_completed', label: 'Mission completed', description: 'When the customer completes a mission.' },
   { id: 'reward_claimed', label: 'Reward claimed', description: 'When the customer claims a catalog reward.' },
+  { id: 'return_reminder', label: 'Customer return reminder', description: 'When a participating customer has been inactive.' },
+  { id: 'mission_reminder', label: 'Mission progress reminder', description: 'When an active mission has progress but no recent activity.' },
+  { id: 'reward_expiring', label: 'Reward expiration reminder', description: 'Before an issued reward expires.' },
 ];
 const EVENT_VARIABLES: Record<EventType, TemplateEventVariable[]> = {
   visit_validated: [
@@ -39,6 +42,21 @@ const EVENT_VARIABLES: Record<EventType, TemplateEventVariable[]> = {
     { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
     { key: 'reward_name', sample: 'Café grátis' }, { key: 'redemption_code', sample: 'AB12CD34' },
     { key: 'reward_expires_at', sample: '15/10/2026' },
+  ],
+  return_reminder: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'campaign_name', sample: 'Cartão de café' },
+  ],
+  mission_reminder: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'campaign_name', sample: 'Cartão de café' }, { key: 'mission_name', sample: 'Cliente frequente' },
+    { key: 'mission_progress', sample: '2' }, { key: 'mission_goal', sample: '5' },
+  ],
+  reward_expiring: [
+    { key: 'customer_name', sample: 'Ana' }, { key: 'business_name', sample: 'Café Central' },
+    { key: 'campaign_name', sample: 'Cartão de café' }, { key: 'reward_name', sample: 'Café grátis' },
+    { key: 'redemption_code', sample: 'AB12CD34' }, { key: 'reward_expires_at', sample: '15/10/2026' },
+    { key: 'days_remaining', sample: '2' },
   ],
 };
 
@@ -140,11 +158,17 @@ export const CommunicationsSettings: React.FC = () => {
     visit_validated: '',
     mission_completed: '',
     reward_claimed: '',
+    return_reminder: '',
+    mission_reminder: '',
+    reward_expiring: '',
   });
   const [enabled, setEnabled] = React.useState<Record<EventType, boolean>>({
     visit_validated: false,
     mission_completed: false,
     reward_claimed: false,
+    return_reminder: false,
+    mission_reminder: false,
+    reward_expiring: false,
   });
   const [busy, setBusy] = React.useState('');
   const [channelBusy, setChannelBusy] = React.useState<Record<CommunicationChannel, '' | 'connect' | 'disconnect'>>({
@@ -169,8 +193,8 @@ export const CommunicationsSettings: React.FC = () => {
     setMappings(nextMappings);
     setNotifications(response.notifications ?? []);
     setNotificationAttempts(response.attempts ?? []);
-    const nextSelection = { visit_validated: '', mission_completed: '', reward_claimed: '' } as Record<EventType, string>;
-    const nextEnabled = { visit_validated: false, mission_completed: false, reward_claimed: false } as Record<EventType, boolean>;
+    const nextSelection = Object.fromEntries(EVENTS.map((event) => [event.id, ''])) as Record<EventType, string>;
+    const nextEnabled = Object.fromEntries(EVENTS.map((event) => [event.id, false])) as Record<EventType, boolean>;
     nextMappings.forEach((mapping) => {
       if (!EVENTS.some((event) => event.id === mapping.event_type)) return;
       const eventType = mapping.event_type as EventType;

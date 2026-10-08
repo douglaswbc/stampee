@@ -251,7 +251,10 @@ const getProviderKey = async (integration: IntegrationRow) => {
   return decryptSecret(integration.zernio_api_key_ciphertext);
 };
 
-const eventTypes = new Set(['visit_validated', 'mission_completed', 'reward_claimed']);
+const eventTypes = new Set([
+  'visit_validated', 'mission_completed', 'reward_claimed',
+  'return_reminder', 'mission_reminder', 'reward_expiring',
+]);
 const eventVariableSamples: Record<string, Record<string, string>> = {
   visit_validated: {
     customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
@@ -264,6 +267,17 @@ const eventVariableSamples: Record<string, Record<string, string>> = {
   reward_claimed: {
     customer_name: 'Ana', business_name: 'Café Central', reward_name: 'Café grátis',
     redemption_code: 'AB12CD34', reward_expires_at: '15/10/2026',
+  },
+  return_reminder: {
+    customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
+  },
+  mission_reminder: {
+    customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
+    mission_name: 'Cliente frequente', mission_progress: '2', mission_goal: '5',
+  },
+  reward_expiring: {
+    customer_name: 'Ana', business_name: 'Café Central', campaign_name: 'Cartão de café',
+    reward_name: 'Café grátis', redemption_code: 'AB12CD34', reward_expires_at: '15/10/2026', days_remaining: '2',
   },
 };
 const extractTemplateParameterCount = (template: Record<string, unknown>) => {

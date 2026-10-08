@@ -17,6 +17,7 @@ import { LocalizedTree } from "./LocalizedTree";
 import { LoyaltyPointsSettings } from "./LoyaltyPointsSettings";
 import { getBrowserTimeZone, getSupportedTimeZones, getTimeZoneOptionLabel } from "../lib/timezones";
 import { CommunicationsSettings } from "./CommunicationsSettings";
+import { EngagementRemindersSettings } from "./EngagementRemindersSettings";
 
 const DELETE_CONFIRMATION = "DELETE";
 const TIME_ZONE_OPTIONS = getSupportedTimeZones().map(value => ({
@@ -28,8 +29,8 @@ export const SettingsPage: React.FC = () => {
   const publicUrlHost = typeof window !== "undefined" ? window.location.host : new URL(APP_ORIGIN).host;
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get("tab");
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"company" | "loyalty" | "communications" | "team" | "account">(
-    initialTab === "loyalty" || initialTab === "communications" || initialTab === "team" || initialTab === "account" ? initialTab : "company"
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"company" | "loyalty" | "communications" | "engagement" | "team" | "account">(
+    initialTab === "loyalty" || initialTab === "communications" || initialTab === "engagement" || initialTab === "team" || initialTab === "account" ? initialTab : "company"
   );
   const navigate = useNavigate();
   const { staffAccounts, createStaff, updateStaffPin, setStaffAccess, deleteStaff, currentOwner, currentUser, deleteAccount, updateProfileInfo, updatePassword, refreshProfile } = useAuth();
@@ -258,6 +259,7 @@ export const SettingsPage: React.FC = () => {
     { id: "company", label: t("Company") },
     { id: "loyalty", label: t("Loyalty program") },
     { id: "communications", label: t("Communications") },
+    { id: "engagement", label: t("Reminders") },
     { id: "team", label: t("Team") },
     { id: "account", label: t("Account & security") },
   ] as const;
@@ -285,7 +287,7 @@ export const SettingsPage: React.FC = () => {
       </div>
 
       <div className="space-y-5">
-        <div role="tablist" aria-label={t("Settings sections")} className="grid w-full grid-cols-2 gap-1.5 rounded-xl border bg-white p-1.5 md:grid-cols-3 xl:grid-cols-5">
+        <div role="tablist" aria-label={t("Settings sections")} className="grid w-full grid-cols-2 gap-1.5 rounded-xl border bg-white p-1.5 md:grid-cols-3 xl:grid-cols-6">
           {settingsTabs.map((tab, index) => (
             <button
               key={tab.id}
@@ -424,6 +426,10 @@ export const SettingsPage: React.FC = () => {
 
           <div id="settings-panel-communications" role="tabpanel" aria-labelledby="settings-tab-communications" tabIndex={0} hidden={activeSettingsTab !== "communications"} className="space-y-5">
             <CommunicationsSettings />
+          </div>
+
+          <div id="settings-panel-engagement" role="tabpanel" aria-labelledby="settings-tab-engagement" tabIndex={0} hidden={activeSettingsTab !== "engagement"} className="space-y-5">
+            <EngagementRemindersSettings />
           </div>
 
           <div id="settings-panel-team" role="tabpanel" aria-labelledby="settings-tab-team" tabIndex={0} hidden={activeSettingsTab !== "team"} className="space-y-5">

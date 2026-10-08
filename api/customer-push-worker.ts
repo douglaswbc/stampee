@@ -6,12 +6,14 @@ type ClaimedPushDelivery = {
   business_name: string;
   business_slug: string;
   interface_language: string;
-  event_type: 'visit_validated' | 'mission_completed' | 'reward_claimed';
+  event_type: 'visit_validated' | 'mission_completed' | 'reward_claimed' | 'return_reminder' | 'mission_reminder' | 'reward_expiring';
   endpoint_url: string;
   p256dh_key: string;
   auth_secret: string;
   subscription_id: string;
   card_unique_id: string | null;
+  message_title?: string | null;
+  message_body?: string | null;
 };
 
 const encoder = new TextEncoder();
@@ -148,6 +150,12 @@ const encryptPayload = async (delivery: ClaimedPushDelivery, payload: Record<str
 
 const notificationCopy = (delivery: ClaimedPushDelivery) => {
   const language = delivery.interface_language?.toLowerCase() || 'en';
+  if (delivery.event_type === 'return_reminder' || delivery.event_type === 'mission_reminder' || delivery.event_type === 'reward_expiring') {
+    return {
+      title: delivery.message_title || 'Stampfy',
+      body: delivery.message_body || '',
+    };
+  }
   const business = delivery.business_name || (language.startsWith('pt') ? 'o comércio' : language.startsWith('es') ? 'el negocio' : 'the business');
   if (language.startsWith('pt')) {
     if (delivery.event_type === 'visit_validated') return { title: 'Atualização de fidelidade', body: `Sua visita foi validada em ${business}.` };
@@ -264,6 +272,11 @@ export default {
     }
 
     try {
+      try {
+        await restFetch('rpc/enqueue_due_customer_engagement_reminders', 'POST', { batch_limit: 250 });
+      } catch {
+        // Reminder planning must not block transactional browser notifications.
+      }
       const claimed = await restFetch('rpc/claim_customer_push_deliveries', 'POST', { batch_limit: 10 }) as ClaimedPushDelivery[] | null;
       const deliveries = Array.isArray(claimed) ? claimed : [];
       const outcomes: string[] = [];

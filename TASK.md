@@ -199,28 +199,30 @@ Preparar o Stampfy para instalar como PWA e receber notificações Web Push em d
 
 **Critérios de aceite:** [~] instalação é opcional; o prompt só aparece após ação no cartão; inscrições podem ser revogadas; o worker abre o cartão correto e respeita o consentimento por empresa/categoria. Migration, secrets, agendamento e validação dos dispositivos ainda pendentes. Detalhes operacionais em [docs/web-push.md](docs/web-push.md).
 
-### Fase 7 — Lembretes automáticos e controles para empresas [ ]
+### Fase 7 — Lembretes automáticos e controles para empresas [~]
 
 Adicionar reengajamento baseado em eventos e regras explícitas, sem transformar o push em canal de mensagens excessivas. Reutilizar a outbox/worker de comunicações quando adequado, após inspecionar as migrations, preferências e idempotência existentes.
 
-- [ ] Separar atualizações transacionais da participação (visita validada, missão concluída, recompensa disponível ou próxima do vencimento) de promoções e lembretes de retorno; definir consentimento e elegibilidade para cada categoria.
-- [ ] Definir gatilhos verificáveis ligados a campanhas e dados do servidor, como progresso sem atividade por um período, missão ainda ativa ou recompensa próxima do vencimento. Não notificar após conclusão, expiração, cancelamento ou saída da campanha.
-- [ ] Criar controles por empresa para ativar/desativar categorias, escolher campanhas elegíveis, configurar cadência, validade, horário silencioso, fuso horário da empresa e conteúdo disponível para cada mensagem.
-- [ ] Oferecer modelos com variáveis permitidas e pré-visualização; validar valores e destinos no servidor. Não permitir que configurações do painel contornem consentimento ou limites globais.
-- [ ] Aplicar limite de frequência por cliente e empresa, deduplicação, idempotência, janela de envio e supressão quando o cliente já concluiu a ação. Revalidar consentimento e estado da campanha no momento do envio.
-- [ ] Selecionar canais elegíveis sem duplicar a mesma notificação: push apenas com inscrição ativa e consentimentos correspondentes; WhatsApp apenas com telefone e opt-in válido; e-mail somente quando houver endereço e consentimento/capacidade de envio configurados. Manter avisos dentro da área do cliente como histórico quando ele voltar ao sistema.
-- [ ] Registrar eventos enfileirados, tentativas e falhas; apresentar métricas compatíveis com o que cada canal realmente confirma, sem tratar push como entregue ou lido quando não houver confirmação confiável.
-- [ ] Permitir que o cliente pause ou revogue categorias e canais; a empresa não pode reativar preferências revogadas pelo cliente.
+- [x] Separar atualizações transacionais de fidelidade de promoções e lembretes de retorno, com consentimentos e elegibilidade distintos por canal.
+- [x] Definir gatilhos verificáveis no servidor para retorno após inatividade, progresso parado em missão ativa e recompensa emitida próxima do vencimento; revalidar atividade, campanha, missão e resgate antes do envio.
+- [x] Criar controles por empresa para ativar categorias, escolher campanhas, configurar canais e prioridade, cadência, limites, horário silencioso no fuso da empresa e conteúdo de push.
+- [x] Oferecer modelos com variáveis permitidas, prévia com dados de exemplo e validação server-side; modelos de WhatsApp aprovados são geridos em Comunicações.
+- [x] Aplicar limites por cliente/empresa, deduplicação, idempotência e supressão após atividade, conclusão, resgate, expiração, desativação ou revogação.
+- [x] Selecionar um único canal elegível por lembrete entre push e WhatsApp, com fallback configurável; e-mail permanece indisponível até configurar um provedor. O histórico do cliente mostra os lembretes aceitos pelos canais.
+- [x] Registrar fila, tentativas e falhas; exibir aceites, falhas e pendências sem afirmar que push foi visto ou entregue ao cliente.
+- [x] Permitir ao cliente pausar ou revogar cada canal no cartão público ou em `/account`; a empresa não altera a preferência do cliente.
 
-**Critérios de aceite:** regras de lembrete usam eventos e horários do servidor; limites e consentimento são aplicados mesmo em chamadas concorrentes/repetidas; a empresa configura somente seus próprios envios; o cliente controla os canais/categorias; opt-out, conclusão e expiração suprimem envios futuros; cada tentativa é auditável e não altera saldo, carimbos ou progresso.
+**Critérios de aceite:** [~] As regras e os controles estão implementados no código e no patch aditivo; falta aplicar a migration ao Supabase, agendar os workers e concluir validação de produção/dispositivos.
 
 ### Regras transversais das fases 5–7
 
-- [ ] Fazer migrations aditivas, preservando os clientes, cartões, campanhas e preferências atuais; revisar RLS, constraints, índices, RPCs e secrets antes de publicar qualquer alteração.
-- [ ] Não tornar e-mail, telefone, conta Stampfy, instalação do PWA ou push requisitos para participar de uma campanha.
-- [ ] Manter dados de participação pertencentes a cada empresa; a área central reúne somente registros explicitamente vinculados e autorizados pelo cliente.
-- [ ] Tratar inscrição push como dado sensível por dispositivo, nunca como identificador global do cliente; guardar chaves privadas e credenciais somente no servidor.
-- [ ] Oferecer alternativa de consulta na próxima visita ao site e não prometer entrega garantida por notificações do navegador.
-- [ ] Documentar textos de consentimento, retenção, revogação, exclusão/desvinculação e suporte para perda ou troca de dispositivo antes do lançamento.
+- [~] Preparar migration aditiva que preserva os dados; aplicar no Supabase e revisar as políticas/constraints após a implantação.
+- [x] Não tornar e-mail, telefone, conta Stampfy, instalação do PWA ou push requisitos para participar de campanha.
+- [x] Manter dados por empresa; a conta central só consulta registros vinculados pelo próprio cliente.
+- [x] Manter push vinculado ao cartão/dispositivo e segredos somente no servidor.
+- [x] Oferecer histórico de lembretes e não afirmar entrega/leitura de push.
+- [x] Documentar consentimento, revogação, vínculo dos dados e operação em [docs/customer-engagement-reminders.md](docs/customer-engagement-reminders.md).
+
+**Pendências para encerrar a fase em produção:** aplicar `supabase/legacy-patches/add_customer_engagement_reminders.sql`, configurar os segredos e agendar `/api/zernio-worker` e `/api/customer-push-worker`; depois validar consentimento, supressão, limites, templates aprovados e dispositivos reais.
 
 **Referências técnicas:** [MDN — Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API), [MDN — boas práticas para Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API/Best_Practices), [Apple — Web Push em web apps e navegadores](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers), [Apple — Safari 16.4 release notes](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes?changes=_5%2C_5).

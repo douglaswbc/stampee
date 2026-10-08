@@ -98,6 +98,9 @@ const eventVariableKeys: Record<string, Set<string>> = {
   visit_validated: new Set(['customer_name', 'business_name', 'campaign_name', 'stamps', 'total_stamps', 'stamps_remaining', 'visit_date']),
   mission_completed: new Set(['customer_name', 'business_name', 'mission_name', 'mission_reward', 'completion_number']),
   reward_claimed: new Set(['customer_name', 'business_name', 'reward_name', 'redemption_code', 'reward_expires_at']),
+  return_reminder: new Set(['customer_name', 'business_name', 'campaign_name']),
+  mission_reminder: new Set(['customer_name', 'business_name', 'campaign_name', 'mission_name', 'mission_progress', 'mission_goal']),
+  reward_expiring: new Set(['customer_name', 'business_name', 'campaign_name', 'reward_name', 'redemption_code', 'reward_expires_at', 'days_remaining']),
 };
 
 const readFirst = async <T = Record<string, unknown>>(path: string) => {
@@ -105,7 +108,12 @@ const readFirst = async <T = Record<string, unknown>>(path: string) => {
   return rows?.[0] ?? null;
 };
 
-const loadEventVariables = async (notification: ClaimedNotification, eventKey: string, requiredKeys: string[]) => {
+const loadEventVariables = async (
+  notification: ClaimedNotification,
+  eventKey: string,
+  requiredKeys: string[],
+  reminderContext?: { campaign_id: string | null; card_id: string | null; reminder_subject_id: string | null; activity_snapshot_at: string | null },
+) => {
   const values: Record<string, string> = {};
   if (requiredKeys.includes('customer_name')) values.customer_name = notification.customer_name || '';
   if (requiredKeys.includes('business_name')) {
@@ -176,6 +184,73 @@ const loadEventVariables = async (notification: ClaimedNotification, eventKey: s
       ? 'pt-BR'
       : notification.template_language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US';
     values.reward_expires_at = Number.isNaN(expiresAt.getTime()) ? '' : expiresAt.toLocaleDateString(locale, { timeZone: 'UTC' });
+  } else if (notification.event_type === 'return_reminder') {
+    const campaign = reminderContext?.campaign_id ? await readFirst<{ name: string }>(
+      'campaigns?id=eq.' + encodeURIComponent(reminderContext.campaign_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id) + '&select=name',
+    ) : null;
+    if (!campaign) return null;
+    values.campaign_name = campaign.name || '';
+  } else if (notification.event_type === 'mission_reminder') {
+    const missionId = reminderContext?.reminder_subject_id || '';
+    const mission = await readFirst<{ name: string; campaign_id: string; goal_count: number; starts_at: string; mission_type: 'visit_count' | 'card_stamps' }>(
+      'loyalty_missions?id=eq.' + encodeURIComponent(missionId)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&campaign_id=eq.' + encodeURIComponent(reminderContext?.campaign_id || '')
+        + '&select=name,campaign_id,goal_count,starts_at,mission_type',
+    );
+    if (!mission || !reminderContext?.card_id || !reminderContext.activity_snapshot_at) return null;
+    const campaign = await readFirst<{ name: string }>(
+      'campaigns?id=eq.' + encodeURIComponent(mission.campaign_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id) + '&select=name',
+    );
+    const [events, cardCompletions, generalCompletions] = await Promise.all([
+      restFetch('mission_progress_events?mission_id=eq.' + encodeURIComponent(missionId)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&select=card_id,created_at', 'GET') as Promise<Array<{ card_id: string; created_at: string }> | null>,
+      readFirst<{ completed_at: string }>('mission_completions?mission_id=eq.' + encodeURIComponent(missionId)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&card_id=eq.' + encodeURIComponent(reminderContext.card_id)
+        + '&select=completed_at&order=completed_at.desc&limit=1'),
+      readFirst<{ completed_at: string }>('mission_completions?mission_id=eq.' + encodeURIComponent(missionId)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&card_id=is.null&select=completed_at&order=completed_at.desc&limit=1'),
+    ]);
+    const completionTime = [cardCompletions?.completed_at, generalCompletions?.completed_at]
+      .filter((value): value is string => !!value)
+      .map(value => new Date(value).getTime())
+      .filter(Number.isFinite)
+      .reduce((latest, value) => Math.max(latest, value), new Date(mission.starts_at).getTime());
+    const snapshotTime = new Date(reminderContext.activity_snapshot_at).getTime();
+    const progress = (Array.isArray(events) ? events : []).filter(event => {
+      const createdAt = new Date(event.created_at).getTime();
+      return (mission.mission_type === 'visit_count' || event.card_id === reminderContext.card_id)
+        && createdAt > completionTime && createdAt <= snapshotTime;
+    }).length;
+    values.campaign_name = campaign?.name || '';
+    values.mission_name = mission.name || '';
+    values.mission_progress = String(progress);
+    values.mission_goal = String(mission.goal_count || 0);
+  } else if (notification.event_type === 'reward_expiring') {
+    const redemptionId = reminderContext?.reminder_subject_id || '';
+    const redemption = await readFirst<{ reward_name: string; redemption_code: string; expires_at: string }>(
+      'loyalty_reward_redemptions?id=eq.' + encodeURIComponent(redemptionId)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
+        + '&customer_id=eq.' + encodeURIComponent(notification.customer_id)
+        + '&status=eq.issued&select=reward_name,redemption_code,expires_at',
+    );
+    const campaign = reminderContext?.campaign_id ? await readFirst<{ name: string }>(
+      'campaigns?id=eq.' + encodeURIComponent(reminderContext.campaign_id)
+        + '&owner_id=eq.' + encodeURIComponent(notification.owner_id) + '&select=name',
+    ) : null;
+    if (!redemption || !campaign) return null;
+    const expiresAt = new Date(redemption.expires_at);
+    if (Number.isNaN(expiresAt.getTime())) return null;
+    values.campaign_name = campaign.name || '';
+    values.reward_name = redemption.reward_name || '';
+    values.redemption_code = redemption.redemption_code || '';
+    values.reward_expires_at = expiresAt.toLocaleDateString(notification.template_language.toLowerCase().startsWith('pt') ? 'pt-BR' : notification.template_language.toLowerCase().startsWith('es') ? 'es-ES' : 'en-US', { timeZone: 'UTC' });
+    values.days_remaining = String(Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 86400000)));
   }
 
   return requiredKeys.every((key) => Boolean(values[key]?.trim())) ? values : null;
@@ -218,13 +293,16 @@ const resolveTemplateParams = async (notification: ClaimedNotification, template
   const names = templateParameterNames(template, notification.event_type);
   if (!names) return null;
   if (!names.length) return [];
-  const outbox = await readFirst<{ event_key: string }>(
+  const outbox = await readFirst<{
+    event_key: string; campaign_id: string | null; card_id: string | null;
+    reminder_subject_id: string | null; activity_snapshot_at: string | null;
+  }>(
     'communication_notification_outbox?id=eq.' + encodeURIComponent(notification.outbox_id)
       + '&owner_id=eq.' + encodeURIComponent(notification.owner_id)
-      + '&status=eq.processing&select=event_key',
+      + '&status=eq.processing&select=event_key,campaign_id,card_id,reminder_subject_id,activity_snapshot_at',
   );
   if (!outbox?.event_key) return null;
-  const values = await loadEventVariables(notification, outbox.event_key, [...new Set(names)]);
+  const values = await loadEventVariables(notification, outbox.event_key, [...new Set(names)], outbox);
   if (!values) return null;
   return names.map((name) => values[name]);
 };
@@ -356,6 +434,11 @@ export default {
     if (expected.length < 16 || !equalSecret(expected, supplied)) return json({ error: 'Unauthorized.' }, 401);
 
     try {
+      try {
+        await restFetch('rpc/enqueue_due_customer_engagement_reminders', 'POST', { batch_limit: 250 });
+      } catch {
+        // Reminder planning must not block the existing transactional WhatsApp queue.
+      }
       const claimed = await restFetch('rpc/claim_communication_notifications', 'POST') as ClaimedNotification[] | null;
       const notifications = Array.isArray(claimed) ? claimed : [];
       const results = [];

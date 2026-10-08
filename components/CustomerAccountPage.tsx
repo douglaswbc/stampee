@@ -16,6 +16,7 @@ import {
   setCustomerPortalWhatsAppPreference,
   unlinkCustomerPortalBusiness,
 } from '../lib/db/customerPortal';
+import { setCustomerPortalEngagementPreference, type EngagementChannel } from '../lib/db/customerEngagement';
 
 const SERVICE_UNAVAILABLE_MESSAGE = 'Service is temporarily unavailable. Please try again later.';
 
@@ -197,6 +198,25 @@ const CustomerAccountPage: React.FC = () => {
     setBusyPreference(null);
   };
 
+  const toggleEngagement = async (business: CustomerPortalBusiness, channel: EngagementChannel, enabled: boolean) => {
+    const key = `${business.ownerId}:${business.customerId}`;
+    setBusyPreference(key);
+    setError('');
+    setNotice('');
+    const saved = await setCustomerPortalEngagementPreference(business.ownerId, business.customerId, channel, enabled);
+    if (!saved) {
+      setError(enabled
+        ? channel === 'whatsapp'
+          ? t('Add a mobile number with this business before enabling campaign reminders.')
+          : t('Activate push from this business card on a device first.')
+        : t('We could not update this preference. Please try again.'));
+    } else {
+      setNotice(t('Notification preference saved.'));
+      await refreshPortal();
+    }
+    setBusyPreference(null);
+  };
+
   const unlinkBusiness = async (business: CustomerPortalBusiness) => {
     const confirmed = window.confirm(t('Remove this business from your Stampfy account? Its records will stay with the business, and WhatsApp and push loyalty updates for this customer record will be turned off.'));
     if (!confirmed) return;
@@ -310,6 +330,7 @@ const CustomerAccountPage: React.FC = () => {
               busyUnlink={busyUnlink === `${business.ownerId}:${business.customerId}`}
               onWhatsAppChange={enabled => void toggleWhatsApp(business, enabled)}
               onPushChange={enabled => void togglePush(business, enabled)}
+              onEngagementChange={(channel, enabled) => void toggleEngagement(business, channel, enabled)}
               onUnlink={() => void unlinkBusiness(business)}
             />)}
           </div>
@@ -319,6 +340,23 @@ const CustomerAccountPage: React.FC = () => {
             <h3 className="mt-3 font-semibold text-foreground">{t('No cards are linked yet')}</h3>
             <p className="mx-auto mt-1 max-w-xl text-sm leading-6 text-muted-foreground">{t('Find records registered with your verified email or add a card using the link provided by a business.')}</p>
           </div>
+        )}
+
+        {!!portalData?.engagementNotifications.length && (
+          <section className="mt-8 rounded-2xl border border-border bg-card p-4 shadow-subtle sm:p-5">
+            <div><h2 className="text-xl font-bold text-foreground">{t('Recent campaign reminders')}</h2><p className="mt-1 text-sm leading-5 text-muted-foreground">{t('A history of reminders submitted by the business. Push notifications may not be delivered or read by the browser.')}</p></div>
+            <div className="mt-4 divide-y divide-border">
+              {portalData.engagementNotifications.map(item => (
+                <article key={item.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0"><p className="text-sm font-semibold">{item.messageTitle || t(item.eventType === 'return_reminder' ? 'Customer return reminder' : item.eventType === 'mission_reminder' ? 'Mission progress reminder' : 'Reward expiration reminder')}</p><p className="text-xs text-muted-foreground">{item.businessName}{item.campaignName ? ` · ${item.campaignName}` : ''}</p></div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{t(item.channel === 'push' ? 'Browser push' : 'WhatsApp')} · {formatDate(item.submittedAt, locale)}</span>
+                  </div>
+                  {item.messageBody && <p className="mt-2 text-sm leading-5 text-muted-foreground">{item.messageBody}</p>}
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         <p className="mt-8 flex gap-2 text-xs leading-5 text-muted-foreground"><ShieldCheck size={15} className="mt-0.5 shrink-0" />{t('Each business can only manage its own loyalty records. Your account brings together only the cards you link.')}</p>
@@ -335,8 +373,9 @@ const BusinessHistoryCard: React.FC<{
   busyUnlink: boolean;
   onWhatsAppChange: (enabled: boolean) => void;
   onPushChange: (enabled: boolean) => void;
+  onEngagementChange: (channel: EngagementChannel, enabled: boolean) => void;
   onUnlink: () => void;
-}> = ({ business, locale, t, busyPreference, busyUnlink, onWhatsAppChange, onPushChange, onUnlink }) => (
+}> = ({ business, locale, t, busyPreference, busyUnlink, onWhatsAppChange, onPushChange, onEngagementChange, onUnlink }) => (
   <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-subtle">
     <header className="flex flex-col gap-3 border-b border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div><h3 className="text-lg font-bold text-foreground">{business.businessName}</h3><p className="mt-0.5 text-sm text-muted-foreground">{business.customerName}</p></div>
@@ -372,6 +411,14 @@ const BusinessHistoryCard: React.FC<{
           <label className={`mt-3 flex items-start justify-between gap-3 ${business.hasPushSubscription || business.pushLoyaltyEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
             <span><span className="block text-sm font-medium text-foreground">{t('Browser loyalty updates')}</span><span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{business.hasPushSubscription ? t('Allow this business to send visit, mission, and reward updates as browser notifications.') : business.pushLoyaltyEnabled ? t('No active browser subscription is linked now. Open a card on a device to enable it again.') : t('Open a card from this business on the device where you want to receive notifications.')}</span></span>
             <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={business.pushLoyaltyEnabled} disabled={(!business.hasPushSubscription && !business.pushLoyaltyEnabled) || busyPreference} onChange={event => onPushChange(event.target.checked)} aria-label={t('Browser loyalty updates')} />
+          </label>
+          <label className={`mt-3 flex items-start justify-between gap-3 ${business.hasMobile || business.whatsappMarketingEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+            <span><span className="block text-sm font-medium text-foreground">{t('Campaign reminders by WhatsApp')}</span><span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{business.hasMobile ? t('Allow optional return, mission, and reward reminders by WhatsApp.') : business.whatsappMarketingEnabled ? t('You can turn off WhatsApp campaign reminders even if this business no longer has your mobile number.') : t('Add a mobile number with this business before enabling campaign reminders.')}</span></span>
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={business.whatsappMarketingEnabled} disabled={(!business.hasMobile && !business.whatsappMarketingEnabled) || busyPreference} onChange={event => onEngagementChange('whatsapp', event.target.checked)} aria-label={t('Campaign reminders by WhatsApp')} />
+          </label>
+          <label className={`mt-3 flex items-start justify-between gap-3 ${business.hasPushSubscription || business.pushMarketingEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+            <span><span className="block text-sm font-medium text-foreground">{t('Campaign reminders by browser push')}</span><span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{business.hasPushSubscription ? t('Allow optional return, mission, and reward reminders as browser notifications.') : business.pushMarketingEnabled ? t('No active browser subscription is linked now. Open a card on a device to enable it again.') : t('Activate push from this business card on the device where you want to receive reminders.')}</span></span>
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={business.pushMarketingEnabled} disabled={(!business.hasPushSubscription && !business.pushMarketingEnabled) || busyPreference} onChange={event => onEngagementChange('push', event.target.checked)} aria-label={t('Campaign reminders by browser push')} />
           </label>
           <Button type="button" variant="ghost" size="sm" onClick={onUnlink} disabled={busyUnlink || busyPreference} className="mt-3 gap-2 px-0 text-destructive hover:bg-transparent hover:text-destructive"><Unlink size={14} />{busyUnlink ? t('Removing...') : t('Remove this business from my account')}</Button>
         </div>
