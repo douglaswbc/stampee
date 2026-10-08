@@ -4,7 +4,7 @@
 
 # Stampfy
 
-Stampfy is a digital loyalty and stamp card platform. Each owner account manages one business, with its data isolated in Supabase. You can self-host the frontend and connect it to your own Supabase project.
+Stampfy is a digital loyalty and stamp card platform. Each owner account manages one business, with its data isolated in Supabase. An institutional website module for each business is in implementation. You can self-host the frontend and connect it to your own Supabase project.
 
 Owners can register a business at `/signup` and sign in at `/login`. Each owner account is one tenant in the current SaaS model. Platform administrators use the separate `/platform` console; staff sign in through `/{slug}/staff`; customers can join a campaign at `/{slug}/join/{campaignId}` and view a card at `/{slug}/{uniqueId}`.
 
@@ -66,6 +66,7 @@ Owners can register a business at `/signup` and sign in at `/login`. Each owner 
    - To enable the owner-only “Reset business data” control in Settings on an existing project, run [`supabase/legacy-patches/reset_owner_business_data.sql`](supabase/legacy-patches/reset_owner_business_data.sql). It clears operational records while preserving owner/staff access and company preferences. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/reset_owner_business_data.sql`.
    - For an existing project, also run [`supabase/legacy-patches/add_company_locale_preferences.sql`](supabase/legacy-patches/add_company_locale_preferences.sql) to persist the company's interface language and currency preferences.
    - To persist the company's time zone, run [`supabase/legacy-patches/add_company_time_zone.sql`](supabase/legacy-patches/add_company_time_zone.sql) before deploying the time zone settings. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_company_time_zone.sql`.
+   - For the institutional website module, apply [`supabase/legacy-patches/add_business_sites.sql`](supabase/legacy-patches/add_business_sites.sql) before deploying. It adds tenant-scoped drafts, publication history, and public read RPCs. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `APP_ORIGIN` in Vercel; see [the website module plan](docs/sites-institucionais.md) for sitemap and routing details.
    - For welcome points and customer referrals, run [`supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`](supabase/legacy-patches/add_customer_welcome_and_referral_points.sql) after the points and reward catalog patches. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`.
    - For an existing project, apply [`supabase/legacy-patches/add_saas_platform_foundation.sql`](supabase/legacy-patches/add_saas_platform_foundation.sql) to add the platform admin registry and tenant management RPCs. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_saas_platform_foundation.sql`.
    - The development seed creates a local platform administrator. For production, create an Auth user with a unique password first, set its email in [`supabase/bootstrap_platform_admin.sql`](supabase/bootstrap_platform_admin.sql), then run that bootstrap in the SQL Editor.

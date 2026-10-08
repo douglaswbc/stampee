@@ -4,17 +4,29 @@
 
 Adicionar ao Stampfy um módulo para cada comércio publicar e administrar um site institucional local, com páginas públicas, catálogo de produtos e serviços e ferramentas básicas de SEO. O módulo deve complementar campanhas, cartões e fidelidade sem transformar recompensas de fidelidade em produtos à venda.
 
-Este documento é um plano para implementação futura. Não representa funcionalidades já entregues nem garante indexação ou posicionamento em mecanismos de busca.
+Este documento registra o escopo e o andamento da implementação. A primeira entrega está no código do repositório; ela ainda depende da aplicação da migration no Supabase e de validação no deploy. A publicação não garante indexação ou posicionamento em mecanismos de busca.
 
 ## Contexto e decisões iniciais
 
 - Integrar ao projeto existente: React, TypeScript, Vite, Supabase e a hospedagem atual. Não criar um projeto paralelo nem trocar a stack como parte desta iniciativa.
-- Tratar cada perfil de proprietário como o tenant inicial do site. Equipe e proprietário mantêm as permissões e o isolamento já usados pelo Stampfy.
+- Tratar cada perfil de proprietário como o tenant inicial do site. Na primeira entrega, somente o proprietário administra e publica o site; as RPCs validam o tenant e o estado ativo, e o público recebe apenas páginas e itens habilitados da versão publicada.
 - Começar com um site institucional por empresa. Mais de um site por empresa ou uma conta de agência que administre diversos clientes exige decisão de produto antes da modelagem.
-- A raiz compartilhada do Stampfy continua sendo institucional do Stampfy. No domínio compartilhado, usar uma rota pública com namespace, por exemplo `stampfy/empresa/{slug}`, para evitar conflito com login, painel, cartões, equipe e entrada em campanhas.
+- A raiz compartilhada do Stampfy continua sendo institucional do Stampfy. No domínio compartilhado, os sites usam `/empresa/{slug}`, evitando conflito com login, painel, cartões, equipe e entrada em campanhas.
 - Permitir domínio próprio do comércio em uma fase posterior. Nesse caso, o domínio do comércio abre o site na raiz, com resolução segura por hostname, verificação de propriedade, DNS e HTTPS.
 - O catálogo público de produtos e serviços é diferente do catálogo de recompensas do Stampfy. Checkout, pagamentos e estoque de vendas ficam fora do MVP, salvo decisão de escopo posterior.
 - Reutilizar nome, slug, identidade de campanha, links e dados de empresa existentes quando forem adequados; não duplicar esses dados sem necessidade.
+
+## Configuração do deploy
+
+Antes de publicar a primeira versão:
+
+- Aplicar `supabase/legacy-patches/add_business_sites.sql` no projeto Supabase vinculado. O patch é aditivo; não executar `migration.sql` sobre uma base existente.
+- Configurar no Vercel `SUPABASE_URL` e `SUPABASE_ANON_KEY` para as funções públicas. A chave anon/public é suficiente porque as funções retornam somente conteúdo publicado e habilitado; nunca configurar a chave service role nestas rotas.
+- Configurar `APP_ORIGIN` com a origem pública canônica, por exemplo `https://stampee.co`. Sem essa variável, as funções usam a origem da requisição recebida.
+- Configurar `SITE_ORIGIN` ou `VITE_APP_URL` no build para que o sitemap estático geral use o domínio correto. `robots.txt` referencia o sitemap geral e `/sites-sitemap.xml`.
+- Confirmar que as funções Vercel em `api/` e os rewrites de `/empresa/{slug}` e `/sites-sitemap.xml` estão ativos no deploy.
+
+O HTML público é montado nas funções Vercel a partir da RPC pública do Supabase. O preview e a administração usam RPCs autenticadas; nenhuma tabela do módulo recebe acesso direto do navegador.
 
 ## Navegação e experiência de administração
 
@@ -103,47 +115,47 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 
 ## Fases de execução
 
-### Fase 0 — Análise e decisões [ ]
+### Fase 0 — Análise e decisões [x]
 
-- [ ] Revisar stack e versões, rotas, modelo de proprietário/equipe, RLS, migrations, hospedagem, cache e deploy atual.
-- [ ] Confirmar o MVP de um site por proprietário e decidir os dados empresariais reutilizáveis.
-- [ ] Definir URLs públicas, conteúdo mínimo e limites do catálogo sem checkout.
-- [ ] Escolher a estratégia de HTML inicial/indexação compatível com Vite e hospedagem atual.
+- [x] Revisar stack, rotas, modelo multi-tenant, hospedagem Vercel e uso das funções `/api`.
+- [x] Definir um site por proprietário e reutilizar o slug e o nome comercial do tenant.
+- [x] Definir `/empresa/{slug}`, páginas e diretório sem checkout ou integração com recompensas.
+- [x] Escolher HTML renderizado no servidor por função Vercel para entregar conteúdo e metadados no primeiro carregamento.
 
-### Fase 1 — Modelo e segurança [ ]
+### Fase 1 — Modelo e segurança [~]
 
-- [ ] Projetar modelo relacional e migrations incrementais.
-- [ ] Definir RLS, autorização no servidor, uploads e auditoria por tenant.
-- [ ] Definir estados de rascunho, publicação, preview e revisão.
+- [x] Criar tabelas aditivas de configuração do site e histórico de revisões, ligadas ao proprietário.
+- [~] Restringir acesso às tabelas e validar o proprietário ativo nas RPCs; a migration ainda precisa ser aplicada e validada no projeto Supabase.
+- [~] Modelar rascunho, publicação, preview e revisão; ainda falta auditoria detalhada por ação e política de uploads.
 
-### Fase 2 — Administração e template [ ]
+### Fase 2 — Administração e template [~]
 
-- [ ] Adicionar menu Site e dashboard de status.
+- [x] Adicionar menu Site e estado de publicação, URL e última publicação.
 - [ ] Criar fluxo assistido com salvamento do progresso.
-- [ ] Implementar identidade visual e editor de páginas/blocos acessível e responsivo.
-- [ ] Implementar template institucional inicial.
+- [~] Implementar editor responsivo de conteúdo, páginas e itens; o editor completo de blocos e upload de mídia ficam pendentes.
+- [x] Implementar o primeiro template institucional com navegação, rodapé e layout responsivo.
 
-### Fase 3 — Páginas públicas e diretório [ ]
+### Fase 3 — Páginas públicas e diretório [~]
 
-- [ ] Renderizar Home, Sobre, Contato, privacidade e 404.
-- [ ] Cadastrar categorias, produtos e serviços com páginas individuais.
-- [ ] Criar navegação e links internos entre páginas, categorias e itens.
-- [ ] Permitir destacar produtos/serviços em landing pages.
+- [~] Renderizar Home, Sobre, Contato, páginas configuráveis e 404; conteúdo de FAQ e política de privacidade precisa ser preenchido antes de ativar essas páginas.
+- [x] Cadastrar categorias, produtos e serviços com páginas individuais.
+- [x] Criar navegação e links entre páginas, categorias e itens.
+- [x] Permitir destacar produtos e serviços na Home e em landing pages.
 
-### Fase 4 — Preview, publicação e domínios [ ]
+### Fase 4 — Preview, publicação e domínios [~]
 
-- [ ] Criar preview seguro e publicação de versões.
-- [ ] Registrar revisões e rollback.
-- [ ] Publicar primeiro no caminho compartilhado `/empresa/{slug}`.
+- [x] Criar preview autenticado, publicação de versões e rollback por nova revisão.
+- [x] Registrar snapshots de conteúdo por publicação.
+- [~] Configurar publicação no caminho `/empresa/{slug}`; rewrites e função estão no repositório, aguardando migration e validação na hospedagem.
 - [ ] Implementar domínio próprio somente após definir configuração de DNS, HTTPS e resolução por hostname.
 
-### Fase 5 — SEO técnico e local [ ]
+### Fase 5 — SEO técnico e local [~]
 
-- [ ] Implementar metadados, canonical, Open Graph, redirects e idioma.
-- [ ] Gerar sitemap e robots sem rascunhos nem previews.
-- [ ] Implementar JSON-LD condicional e validar consistência com conteúdo visível.
-- [ ] Implementar presença local, imagens responsivas, acessibilidade e performance.
-- [ ] Evitar páginas locais duplicadas ou sem valor específico.
+- [~] Implementar title, description, canonical, Open Graph, Twitter Cards, idioma e controles de indexação; redirects ainda pendentes.
+- [~] Gerar sitemap público apenas com páginas publicadas e indexáveis; verificar a resposta em produção ainda está pendente.
+- [x] Gerar JSON-LD condicional de Organization, LocalBusiness, WebSite, WebPage, BreadcrumbList e Product/Service com dados exibidos.
+- [~] Incluir campos de presença local e layout responsivo; upload otimizado, srcset, auditoria de acessibilidade e medição de performance ficam pendentes.
+- [x] Evitar aliases públicos duplicados para diretório e itens.
 
 ### Fase 6 — Conversão e integrações [ ]
 
@@ -152,12 +164,12 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 - [ ] Integrar Search Console, Bing Webmaster ou analytics somente com autenticação e consentimentos necessários.
 - [ ] Exibir métricas apenas quando houver mensuração configurada.
 
-### Fase 7 — Validação e documentação [ ]
+### Fase 7 — Validação e documentação [~]
 
 - [ ] Validar isolamento com ao menos dois tenants e suas equipes.
 - [ ] Validar páginas, HTML inicial, metadados, canonical, JSON-LD, sitemap e robots.
 - [ ] Validar publicação no domínio correto, rollback e captação de leads.
-- [ ] Documentar configuração, limites, testes executados e bloqueios.
+- [~] Documentar configuração, limites e bloqueios; testes de integração, browser e produção continuam pendentes.
 
 ## Critérios de aceite
 
@@ -177,5 +189,7 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 - [Google Search: dados estruturados de empresas locais](https://developers.google.com/search/docs/appearance/structured-data/local-business)
 - [Google Search: estrutura de navegação de sites](https://developers.google.com/search/docs/specialty/ecommerce/help-google-understand-your-ecommerce-site-structure)
 - [Google Search: estrutura de URLs](https://developers.google.com/search/docs/crawling-indexing/url-structure)
+- [Vercel: Node.js Functions](https://vercel.com/docs/functions/runtimes/node-js)
+- [Vercel: rewrites](https://vercel.com/docs/routing/rewrites)
 - [Diretrizes atuais do Google para ranking local](https://support.google.com/business/answer/7091?hl=pt-BR)
 - [Plano geral do Stampfy](../@TASK.md)

@@ -1,9 +1,11 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { articles } from "../data/articles.data.js";
 
-const SITE_ORIGIN = "https://stampee.co";
+const configuredOrigin = process.env.VITE_APP_URL?.trim() || process.env.SITE_ORIGIN?.trim() || "https://stampee.co";
+const SITE_ORIGIN = new URL(configuredOrigin).origin;
 const OUTPUT_PATH = resolve(process.cwd(), "public", "sitemap.xml");
+const ROBOTS_PATH = resolve(process.cwd(), "public", "robots.txt");
 
 const staticRoutes = [
   { path: "/", lastmod: "2026-03-03", changefreq: "weekly", priority: "1.0" },
@@ -51,3 +53,10 @@ const xml = [
 ].join("\n");
 
 writeFileSync(OUTPUT_PATH, xml, "utf8");
+
+const robots = readFileSync(ROBOTS_PATH, "utf8")
+  .split(/\r?\n/)
+  .filter((line) => !/^\s*Sitemap:/i.test(line))
+  .filter((line, index, lines) => line !== "" || lines[index - 1] !== "");
+robots.push("", `Sitemap: ${SITE_ORIGIN}/sitemap.xml`, `Sitemap: ${SITE_ORIGIN}/sites-sitemap.xml`, "");
+writeFileSync(ROBOTS_PATH, robots.join("\n"), "utf8");

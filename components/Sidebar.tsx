@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, CreditCard, Settings, LogOut, Wallet, History, QrCode, Crown, Sparkles, Target, Gift, TicketCheck } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, Settings, LogOut, Wallet, History, QrCode, Crown, Sparkles, Target, Gift, TicketCheck, Globe2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Button } from './ui/button';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
@@ -27,6 +27,7 @@ export const NAV_ITEMS = [
   { path: '/transactions', label: 'Transactions', icon: History, roles: ['owner'] },
   { path: '/customers', label: 'Customers', icon: Users, roles: ['owner', 'staff'] },
   { path: '/analytics', label: 'Analytics', icon: Sparkles, roles: ['owner'] },
+  { path: '/site', label: 'Website', icon: Globe2, roles: ['owner'] },
   { path: '/settings', label: 'Settings', icon: Settings, roles: ['owner'] },
 ];
 

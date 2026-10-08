@@ -154,6 +154,6 @@ Esses itens exigem decisão de produto e escopo próprios antes de implementaç�
 - [README do Stampfy](README.md)
 - [Schema base do Supabase](supabase/migration.sql)
 
-## Novo módulo planejado: sites institucionais
+## Módulo em implementação: sites institucionais
 
-O plano para sites públicos de cada comércio, menu de administração, páginas institucionais, diretório de produtos/serviços, landing pages, SEO local, publicação e domínios está em [docs/sites-institucionais.md](docs/sites-institucionais.md). Este é um escopo futuro e separado das fases de fidelidade acima; ainda não foi implementado.
+O plano, escopo e andamento dos sites públicos por comércio estão em [docs/sites-institucionais.md](docs/sites-institucionais.md). A primeira entrega de editor, catálogo público, publicação e SEO está no código, mas ainda depende de aplicar a migration no Supabase e validar o deploy; formulários, domínios próprios e integrações continuam pendentes.

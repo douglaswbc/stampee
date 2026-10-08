@@ -87,6 +87,8 @@ const LoginPage = lazy(() => import('./components/LoginPage').then((module) => (
 const SignupPage = lazy(() => import('./components/SignupPage').then((module) => ({ default: module.SignupPage })));
 const SignupConfirmationPage = lazy(() => import('./components/SignupConfirmationPage').then((module) => ({ default: module.SignupConfirmationPage })));
 const PlatformAdminPage = lazy(() => import('./components/PlatformAdminPage').then((module) => ({ default: module.PlatformAdminPage })));
+const BusinessSiteAdminPage = lazy(() => import('./components/BusinessSiteAdminPage').then((module) => ({ default: module.BusinessSiteAdminPage })));
+const PublicBusinessSitePage = lazy(() => import('./components/PublicBusinessSitePage').then((module) => ({ default: module.PublicBusinessSitePage })));
 const StaffLoginPage = lazy(() => import('./components/StaffLoginPage').then((module) => ({ default: module.StaffLoginPage })));
 const SettingsPage = lazy(() => import('./components/SettingsPage').then((module) => ({ default: module.SettingsPage })));
 const ForgotPasswordPage = lazy(() => import('./components/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })));
@@ -148,6 +150,7 @@ const SeoManager: React.FC = () => {
   const location = useLocation();
 
   useEffect(() => {
+    if (location.pathname.startsWith('/empresa/') || location.pathname === '/site/preview') return;
     const seo = getSeoForPathname(location.pathname);
     const socialDescription = seo.socialDescription ?? seo.description;
 
@@ -698,6 +701,7 @@ const AppRoutes: React.FC = () => {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/empresa/:slug/*" element={withSuspense(<PublicBusinessSitePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
         <Route path="/:slug/join/:campaignId" element={withSuspense(<PublicCampaignSignupPage />)} />
@@ -711,6 +715,9 @@ const AppRoutes: React.FC = () => {
         <Route element={<RequireAuth />}>
           <Route element={<RequireRole allowed={["platform_admin"]} />}>
             <Route path="/platform" element={withSuspense(<PlatformAdminPage />)} />
+          </Route>
+          <Route element={<RequireRole allowed={["owner"]} />}>
+            <Route path="/site/preview" element={withSuspense(<PublicBusinessSitePage preview />)} />
           </Route>
           <Route element={<RequireRole allowed={["owner"]} />}>
             <Route path="/active/:cardId" element={<ActiveCardWrapper templates={createdCards} />} />
@@ -738,6 +745,7 @@ const AppRoutes: React.FC = () => {
               <Route path="/analytics" element={withSuspense(<AnalyticsPage customers={customers} campaigns={createdCards} />)} />
               <Route path="/transactions" element={withSuspense(<TransactionsPage customers={customers} />)} />
               <Route path="/settings" element={withSuspense(<SettingsPage />)} />
+              <Route path="/site" element={withSuspense(<BusinessSiteAdminPage />)} />
             </Route>
 
             <Route element={<RequireRole allowed={["owner", "staff"]} />}>

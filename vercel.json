@@ -10,7 +10,7 @@
       ]
     },
     {
-      "source": "/((?!api/|assets/|.*\\..*).*)",
+      "source": "/((?!api/|assets/|empresa/|.*\\..*).*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -20,6 +20,18 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/empresa/:slug",
+      "destination": "/api/public-site?slug=:slug"
+    },
+    {
+      "source": "/empresa/:slug/:path*",
+      "destination": "/api/public-site?slug=:slug&path=:path*"
+    },
+    {
+      "source": "/sites-sitemap.xml",
+      "destination": "/api/sites-sitemap"
+    },
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
