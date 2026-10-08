@@ -156,8 +156,33 @@ const providerRequest = async (apiKey: string, path: string, init: RequestInit =
     throw new ApiFailure('Zernio is temporarily unavailable. Try again.', 502);
   }
   if (!response.ok) {
+    const parsedErrorPayload = await response.json().catch(() => null);
+    const errorPayload = parsedErrorPayload && typeof parsedErrorPayload === 'object' && !Array.isArray(parsedErrorPayload)
+      ? parsedErrorPayload as {
+          code?: unknown;
+          message?: unknown;
+          error?: unknown;
+          error_message?: unknown;
+      }
+      : {};
+    const nestedError = errorPayload.error && typeof errorPayload.error === 'object'
+      ? errorPayload.error as { code?: unknown; message?: unknown }
+      : null;
+    const rawProviderCode = errorPayload.code ?? nestedError?.code;
+    const providerCode = typeof rawProviderCode === 'string' && /^[a-z0-9_-]{1,80}$/i.test(rawProviderCode)
+      ? rawProviderCode.toLowerCase()
+      : '';
+    const providerMessage = [errorPayload.message, errorPayload.error_message, errorPayload.error, nestedError?.message]
+      .find((value): value is string => typeof value === 'string' && value.trim().length > 0);
+    if (providerCode === 'instagramloginmethod_mismatch') {
+      throw new ApiFailure('This Instagram account is already connected to the selected Zernio profile with a different login method. Disconnect it in Zernio first, then try again.', 409);
+    }
     if (response.status === 401 || response.status === 403) throw new ApiFailure('Zernio rejected the stored API key or its permissions.', 400);
     if (response.status === 429) throw new ApiFailure('Zernio rate limit reached. Try again shortly.', 429);
+    const detail = providerMessage?.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+    if (detail) {
+      throw new ApiFailure('Zernio rejected the request (HTTP ' + response.status + (providerCode ? ', ' + providerCode : '') + '): ' + detail, 502);
+    }
     throw new ApiFailure('The Zernio request failed. Check the selected profile and account, then try again.', 502);
   }
   if (response.status === 204) return {};

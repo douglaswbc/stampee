@@ -123,10 +123,16 @@ export const CommunicationsSettings: React.FC = () => {
       try {
         const connected = searchParams.get('connected');
         const providerError = searchParams.get('error');
+        const providerErrorMessage = searchParams.get('error_message');
         const accountId = searchParams.get('accountId');
         const profileId = searchParams.get('profileId');
         if (providerError) {
-          setError(t('Zernio authorization was canceled or could not be completed.'));
+          if (providerError.toLowerCase() === 'instagramloginmethod_mismatch') {
+            setError(t('This Instagram account is already connected to the selected Zernio profile with a different login method. Disconnect it in Zernio first, then try again.'));
+          } else {
+            const safeMessage = providerErrorMessage?.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240);
+            setError(safeMessage || t('Zernio authorization was canceled or could not be completed.'));
+          }
           setSearchParams({ tab: 'communications' }, { replace: true });
         } else if ((connected === 'whatsapp' || connected === 'instagram') && accountId && profileId) {
           setBusy('callback');
@@ -196,8 +202,15 @@ export const CommunicationsSettings: React.FC = () => {
     });
   };
 
-  const connectChannel = (channel: 'whatsapp' | 'instagram') => withBusy(channel, async () => {
-    const response = await callZernioApi<{ authUrl?: string }>({ action: 'connect_url', channel, profileId: selectedProfile });
+  const connectChannel = (channel: 'whatsapp' | 'instagram') => withBusy(`connect:${channel}`, async () => {
+    if (!integration?.zernio_profile_id || selectedProfile !== integration.zernio_profile_id) {
+      throw new Error(t('Save the selected profile before connecting a channel.'));
+    }
+    const response = await callZernioApi<{ authUrl?: string }>({
+      action: 'connect_url',
+      channel,
+      profileId: integration.zernio_profile_id,
+    });
     if (!response.authUrl || !/^https:\/\//i.test(response.authUrl)) throw new Error(t('Zernio did not return a secure authorization link.'));
     window.location.assign(response.authUrl);
   });
@@ -362,35 +375,60 @@ export const CommunicationsSettings: React.FC = () => {
         )}
 
         {integration?.zernio_profile_id && (
-          <div className="mt-6 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border p-4">
-              <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('WhatsApp Business')}</div>
-              <p className="mt-1 break-all text-sm text-muted-foreground">{integration.whatsapp_display_name || integration.whatsapp_account_id || t('Not connected')}</p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button type="button" onClick={() => void connectChannel('whatsapp')} disabled={busy !== ''} className="w-full flex-1">
-                  {integration.whatsapp_account_id ? t('Reconnect WhatsApp') : t('Connect WhatsApp')}
-                </Button>
-                {integration.whatsapp_account_id && (
-                  <Button type="button" variant="outline" onClick={() => disconnectChannel('whatsapp')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
-                    {busy === 'disconnect:whatsapp' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
-                    {t('Disconnect WhatsApp')}
-                  </Button>
+          <div className="mt-6 space-y-3">
+            {selectedProfile !== integration.zernio_profile_id && (
+              <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {t('Save the selected profile before connecting a channel.')}
+              </p>
+            )}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('WhatsApp Business')}</div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${integration.whatsapp_account_id ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-muted-foreground'}`}>
+                    {t(integration.whatsapp_account_id ? 'Connected' : 'Not connected')}
+                  </span>
+                </div>
+                {(integration.whatsapp_display_name || integration.whatsapp_account_id) && (
+                  <p className="mt-1 break-all text-sm text-muted-foreground">{integration.whatsapp_display_name || integration.whatsapp_account_id}</p>
                 )}
+                <p className="mt-2 text-xs text-muted-foreground">{t('This action affects WhatsApp only; the Instagram connection stays unchanged.')}</p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button type="button" onClick={() => void connectChannel('whatsapp')} disabled={busy !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full flex-1 gap-2">
+                    {busy === 'connect:whatsapp' && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                    {busy === 'connect:whatsapp' ? t('Connecting WhatsApp...') : integration.whatsapp_account_id ? t('Reconnect WhatsApp') : t('Connect WhatsApp')}
+                  </Button>
+                  {integration.whatsapp_account_id && (
+                    <Button type="button" variant="outline" onClick={() => disconnectChannel('whatsapp')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
+                      {busy === 'disconnect:whatsapp' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+                      {t('Disconnect WhatsApp')}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="rounded-xl border p-4">
-              <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('Instagram professional account')}</div>
-              <p className="mt-1 break-all text-sm text-muted-foreground">{integration.instagram_username || integration.instagram_account_id || t('Not connected')}</p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" onClick={() => void connectChannel('instagram')} disabled={busy !== ''} className="w-full flex-1">
-                  {integration.instagram_account_id ? t('Reconnect Instagram') : t('Connect Instagram')}
-                </Button>
-                {integration.instagram_account_id && (
-                  <Button type="button" variant="outline" onClick={() => disconnectChannel('instagram')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
-                    {busy === 'disconnect:instagram' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
-                    {t('Disconnect Instagram')}
-                  </Button>
+              <div className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('Instagram professional account')}</div>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${integration.instagram_account_id ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-muted-foreground'}`}>
+                    {t(integration.instagram_account_id ? 'Connected' : 'Not connected')}
+                  </span>
+                </div>
+                {(integration.instagram_username || integration.instagram_account_id) && (
+                  <p className="mt-1 break-all text-sm text-muted-foreground">{integration.instagram_username || integration.instagram_account_id}</p>
                 )}
+                <p className="mt-2 text-xs text-muted-foreground">{t('This action affects Instagram only; the WhatsApp connection stays unchanged.')}</p>
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  <Button type="button" onClick={() => void connectChannel('instagram')} disabled={busy !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full flex-1 gap-2">
+                    {busy === 'connect:instagram' && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                    {busy === 'connect:instagram' ? t('Connecting Instagram...') : integration.instagram_account_id ? t('Reconnect Instagram') : t('Connect Instagram')}
+                  </Button>
+                  {integration.instagram_account_id && (
+                    <Button type="button" variant="outline" onClick={() => disconnectChannel('instagram')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
+                      {busy === 'disconnect:instagram' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+                      {t('Disconnect Instagram')}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
