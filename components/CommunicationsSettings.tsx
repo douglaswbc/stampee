@@ -14,6 +14,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 
 type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed';
+type CommunicationChannel = 'whatsapp' | 'instagram';
 const EVENTS: { id: EventType; label: string; description: string }[] = [
   { id: 'visit_validated', label: 'Validated visit', description: 'After a staff member validates a visit.' },
   { id: 'mission_completed', label: 'Mission completed', description: 'When the customer completes a mission.' },
@@ -77,8 +78,17 @@ export const CommunicationsSettings: React.FC = () => {
     reward_claimed: false,
   });
   const [busy, setBusy] = React.useState('');
+  const [channelBusy, setChannelBusy] = React.useState<Record<CommunicationChannel, '' | 'connect' | 'disconnect'>>({
+    whatsapp: '',
+    instagram: '',
+  });
+  const channelBusyRef = React.useRef<Record<CommunicationChannel, '' | 'connect' | 'disconnect'>>({
+    whatsapp: '',
+    instagram: '',
+  });
   const [error, setError] = React.useState('');
   const [notice, setNotice] = React.useState('');
+  const hasChannelActivity = Boolean(channelBusy.whatsapp || channelBusy.instagram);
 
   const refreshStatus = React.useCallback(async () => {
     const response = await callZernioApi<StatusResponse>({ action: 'status' });
@@ -169,6 +179,26 @@ export const CommunicationsSettings: React.FC = () => {
     }
   };
 
+  const withChannelBusy = async (
+    channel: CommunicationChannel,
+    action: 'connect' | 'disconnect',
+    operation: () => Promise<void>,
+  ) => {
+    if (channelBusyRef.current[channel]) return;
+    channelBusyRef.current[channel] = action;
+    setChannelBusy((current) => ({ ...current, [channel]: action }));
+    setError('');
+    setNotice('');
+    try {
+      await operation();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Communication settings could not be updated.'));
+    } finally {
+      channelBusyRef.current[channel] = '';
+      setChannelBusy((current) => ({ ...current, [channel]: '' }));
+    }
+  };
+
   const saveKey = () => withBusy('key', async () => {
     const response = await callZernioApi<ProfileResponse>({ action: 'save_key', apiKey });
     setApiKey('');
@@ -202,7 +232,7 @@ export const CommunicationsSettings: React.FC = () => {
     });
   };
 
-  const connectChannel = (channel: 'whatsapp' | 'instagram') => withBusy(`connect:${channel}`, async () => {
+  const connectChannel = (channel: CommunicationChannel) => withChannelBusy(channel, 'connect', async () => {
     if (!integration?.zernio_profile_id || selectedProfile !== integration.zernio_profile_id) {
       throw new Error(t('Save the selected profile before connecting a channel.'));
     }
@@ -221,7 +251,7 @@ export const CommunicationsSettings: React.FC = () => {
       : 'Disconnect this Instagram account from Zernio? The Zernio profile, API key, and WhatsApp connection will stay active.';
     if (!window.confirm(t(confirmation))) return;
 
-    void withBusy(`disconnect:${channel}`, async () => {
+    void withChannelBusy(channel, 'disconnect', async () => {
       await callZernioApi({ action: 'disconnect_channel', channel });
       await refreshStatus();
       setNotice(t(channel === 'whatsapp'
@@ -341,7 +371,7 @@ export const CommunicationsSettings: React.FC = () => {
             />
           </div>
           <div className="flex items-end">
-            <Button type="button" onClick={saveKey} disabled={busy !== '' || apiKey.trim().length < 10} className="w-full gap-2 sm:w-auto">
+            <Button type="button" onClick={saveKey} disabled={busy !== '' || hasChannelActivity || apiKey.trim().length < 10} className="w-full gap-2 sm:w-auto">
               {busy === 'key' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {t('Verify and save key')}
             </Button>
@@ -352,13 +382,13 @@ export const CommunicationsSettings: React.FC = () => {
           <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="space-y-1.5">
               <Label htmlFor="zernio-profile">{t('Zernio profile')}</Label>
-              <select id="zernio-profile" value={selectedProfile} onChange={(event) => setSelectedProfile(event.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <select id="zernio-profile" value={selectedProfile} onChange={(event) => setSelectedProfile(event.target.value)} disabled={busy !== '' || hasChannelActivity} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60">
                 <option value="">{t('Choose a profile')}</option>
                 {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.id}</option>)}
               </select>
             </div>
             <div className="flex items-end">
-              <Button type="button" variant="outline" onClick={saveProfile} disabled={!selectedProfile || selectedProfile === integration.zernio_profile_id || busy !== ''} className="w-full sm:w-auto">
+              <Button type="button" variant="outline" onClick={saveProfile} disabled={!selectedProfile || selectedProfile === integration.zernio_profile_id || busy !== '' || hasChannelActivity} className="w-full sm:w-auto">
                 {t('Save profile')}
               </Button>
             </div>
@@ -367,7 +397,7 @@ export const CommunicationsSettings: React.FC = () => {
 
         {integration?.hasZernioKey && (
           <div className="mt-5 flex justify-end border-t pt-4">
-            <Button type="button" variant="destructive" onClick={disconnectZernio} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
+            <Button type="button" variant="destructive" onClick={disconnectZernio} disabled={busy !== '' || hasChannelActivity} className="w-full gap-2 sm:w-auto">
               {busy === 'disconnect' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
               {t('Disconnect Zernio')}
             </Button>
@@ -381,8 +411,8 @@ export const CommunicationsSettings: React.FC = () => {
                 {t('Save the selected profile before connecting a channel.')}
               </p>
             )}
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border p-4">
+            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 26rem), 1fr))' }}>
+              <div className="@container min-w-0 rounded-xl border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('WhatsApp Business')}</div>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${integration.whatsapp_account_id ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-muted-foreground'}`}>
@@ -393,20 +423,20 @@ export const CommunicationsSettings: React.FC = () => {
                   <p className="mt-1 break-all text-sm text-muted-foreground">{integration.whatsapp_display_name || integration.whatsapp_account_id}</p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">{t('This action affects WhatsApp only; the Instagram connection stays unchanged.')}</p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => void connectChannel('whatsapp')} disabled={busy !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full flex-1 gap-2">
-                    {busy === 'connect:whatsapp' && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                    {busy === 'connect:whatsapp' ? t('Connecting WhatsApp...') : integration.whatsapp_account_id ? t('Reconnect WhatsApp') : t('Connect WhatsApp')}
+                <div className="mt-4 flex flex-col gap-2 @lg:flex-row">
+                  <Button type="button" onClick={() => void connectChannel('whatsapp')} disabled={busy !== '' || channelBusy.whatsapp !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full min-w-0 gap-2 @lg:flex-1">
+                    {channelBusy.whatsapp === 'connect' && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                    {channelBusy.whatsapp === 'connect' ? t('Connecting WhatsApp...') : integration.whatsapp_account_id ? t('Reconnect WhatsApp') : t('Connect WhatsApp')}
                   </Button>
                   {integration.whatsapp_account_id && (
-                    <Button type="button" variant="outline" onClick={() => disconnectChannel('whatsapp')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
-                      {busy === 'disconnect:whatsapp' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+                    <Button type="button" variant="outline" onClick={() => disconnectChannel('whatsapp')} disabled={busy !== '' || channelBusy.whatsapp !== ''} className="w-full gap-2 @lg:w-auto">
+                      {channelBusy.whatsapp === 'disconnect' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
                       {t('Disconnect WhatsApp')}
                     </Button>
                   )}
                 </div>
               </div>
-              <div className="rounded-xl border p-4">
+              <div className="@container min-w-0 rounded-xl border p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('Instagram professional account')}</div>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${integration.instagram_account_id ? 'bg-emerald-50 text-emerald-700' : 'bg-secondary text-muted-foreground'}`}>
@@ -417,14 +447,14 @@ export const CommunicationsSettings: React.FC = () => {
                   <p className="mt-1 break-all text-sm text-muted-foreground">{integration.instagram_username || integration.instagram_account_id}</p>
                 )}
                 <p className="mt-2 text-xs text-muted-foreground">{t('This action affects Instagram only; the WhatsApp connection stays unchanged.')}</p>
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => void connectChannel('instagram')} disabled={busy !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full flex-1 gap-2">
-                    {busy === 'connect:instagram' && <LoaderCircle className="h-4 w-4 animate-spin" />}
-                    {busy === 'connect:instagram' ? t('Connecting Instagram...') : integration.instagram_account_id ? t('Reconnect Instagram') : t('Connect Instagram')}
+                <div className="mt-4 flex flex-col gap-2 @lg:flex-row">
+                  <Button type="button" onClick={() => void connectChannel('instagram')} disabled={busy !== '' || channelBusy.instagram !== '' || selectedProfile !== integration.zernio_profile_id} className="w-full min-w-0 gap-2 @lg:flex-1">
+                    {channelBusy.instagram === 'connect' && <LoaderCircle className="h-4 w-4 animate-spin" />}
+                    {channelBusy.instagram === 'connect' ? t('Connecting Instagram...') : integration.instagram_account_id ? t('Reconnect Instagram') : t('Connect Instagram')}
                   </Button>
                   {integration.instagram_account_id && (
-                    <Button type="button" variant="outline" onClick={() => disconnectChannel('instagram')} disabled={busy !== ''} className="w-full gap-2 sm:w-auto">
-                      {busy === 'disconnect:instagram' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
+                    <Button type="button" variant="outline" onClick={() => disconnectChannel('instagram')} disabled={busy !== '' || channelBusy.instagram !== ''} className="w-full gap-2 @lg:w-auto">
+                      {channelBusy.instagram === 'disconnect' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Unplug className="h-4 w-4" />}
                       {t('Disconnect Instagram')}
                     </Button>
                   )}
