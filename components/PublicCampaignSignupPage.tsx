@@ -25,6 +25,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
+  const [whatsappOptIn, setWhatsappOptIn] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !slug || !campaignId) {
@@ -75,6 +76,7 @@ export const PublicCampaignSignupPage: React.FC = () => {
       email,
       mobile,
       referralCode,
+      whatsappOptIn: whatsappOptIn && !!mobile.trim(),
     });
 
     if (result.outcome === 'issued' || result.outcome === 'redirect_existing') {
@@ -213,6 +215,21 @@ export const PublicCampaignSignupPage: React.FC = () => {
                 className="h-12 rounded-xl border-black/10 text-[#1d1d1f] placeholder:text-[#8f9197]"
               />
               <p className="text-xs leading-5 text-[#6e6e73]">Helps staff find your card quickly.</p>
+            </div>
+
+            <div className="rounded-xl border border-black/10 bg-[#fafafa] p-4">
+              <label htmlFor="whatsapp-updates" className="flex items-start gap-3 text-sm leading-6 text-[#34363a]">
+                <input
+                  id="whatsapp-updates"
+                  type="checkbox"
+                  checked={whatsappOptIn}
+                  onChange={(event) => setWhatsappOptIn(event.target.checked)}
+                  disabled={!mobile.trim()}
+                  className="mt-1 h-4 w-4 shrink-0 accent-[#1d1d1f]"
+                />
+                <span>{t('I agree to receive loyalty updates and offers by WhatsApp. Optional; I can opt out later.')}</span>
+              </label>
+              {!mobile.trim() && <p className="mt-2 pl-7 text-xs text-[#6e6e73]">{t('Add a mobile number to enable WhatsApp updates.')}</p>}
             </div>
 
             {error && (

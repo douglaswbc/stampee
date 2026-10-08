@@ -7,6 +7,19 @@ import {
   type PublicBusinessSite,
 } from '../businessSites';
 
+export type BusinessSiteLeadStatus = 'new' | 'contacted' | 'closed';
+
+export interface BusinessSiteLead {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  status: BusinessSiteLeadStatus;
+  consentedAt: string;
+  createdAt: string;
+}
+
 type RawSiteDraft = {
   businessName?: unknown;
   slug?: unknown;
@@ -82,4 +95,34 @@ export async function fetchPublicBusinessSite(slug: string): Promise<PublicBusin
     revision: Number(raw.revision) || 0,
     publishedAt: text(raw.publishedAt),
   };
+}
+
+export async function fetchBusinessSiteLeads(): Promise<{ data: BusinessSiteLead[]; error?: string }> {
+  const { data, error } = await supabase.rpc('get_business_site_leads');
+  if (error || !Array.isArray(data)) return { data: [], error: 'Unable to load site enquiries.' };
+  const rows = data as Array<Record<string, unknown>>;
+  return {
+    data: rows.flatMap((row): BusinessSiteLead[] => {
+      const status = row.status;
+      if (typeof row.id !== 'string' || !['new', 'contacted', 'closed'].includes(String(status))) return [];
+      return [{
+        id: row.id,
+        name: text(row.name),
+        email: text(row.email),
+        phone: text(row.phone),
+        message: text(row.message),
+        status: status as BusinessSiteLeadStatus,
+        consentedAt: text(row.consented_at),
+        createdAt: text(row.created_at),
+      }];
+    }),
+  };
+}
+
+export async function updateBusinessSiteLeadStatus(id: string, status: BusinessSiteLeadStatus): Promise<{ ok: boolean }> {
+  const { data, error } = await supabase.rpc('update_business_site_lead_status', {
+    lead_id_input: id,
+    status_input: status,
+  });
+  return { ok: !error && data === true };
 }

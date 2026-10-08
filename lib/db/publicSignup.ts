@@ -70,6 +70,14 @@ export async function fetchPublicReferralCode(slug: string, cardUniqueId: string
   return typeof code === 'string' && code.length > 0 ? code : null;
 }
 
+export async function revokePublicWhatsAppNotificationConsent(slug: string, cardUniqueId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('revoke_public_whatsapp_notification_consent', {
+    slug_input: slug,
+    card_unique_id: cardUniqueId,
+  });
+  return !error && data === true;
+}
+
 export async function registerPublicCampaignSignup(input: {
   slug: string;
   campaignId: string;
@@ -77,14 +85,16 @@ export async function registerPublicCampaignSignup(input: {
   email?: string;
   mobile?: string;
   referralCode?: string;
+  whatsappOptIn?: boolean;
 }): Promise<PublicCampaignSignupOutcome> {
-  const { data, error } = await supabase.rpc('register_public_campaign_signup', {
+  const { data, error } = await supabase.rpc('register_public_campaign_signup_with_consent', {
     slug_input: input.slug,
     campaign_id_input: input.campaignId,
     customer_name_input: input.name,
     customer_email_input: input.email ?? '',
     customer_mobile_input: input.mobile ?? '',
     referral_code_input: input.referralCode ?? '',
+    whatsapp_opt_in_input: input.whatsappOptIn === true,
   });
 
   if (error || !data || typeof data !== 'object') {

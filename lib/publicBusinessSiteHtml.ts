@@ -8,6 +8,9 @@ const copy = {
     contactCta: 'Entre em contato', category: 'Categoria', price: 'Informação de preço', duration: 'Duração',
     area: 'Área atendida', openingHours: 'Horário de funcionamento', address: 'Endereço', email: 'E-mail',
     phone: 'Telefone', whatsapp: 'WhatsApp', website: 'Site institucional', googleBusiness: 'Perfil da Empresa no Google', privacy: 'Privacidade',
+    name: 'Nome', message: 'Mensagem', sendMessage: 'Enviar mensagem', contactConsent: 'Autorizo o uso dos meus dados para responder a este contato.',
+    contactSuccess: 'Mensagem enviada. O comércio poderá entrar em contato pelos dados informados.', contactRateLimited: 'Muitas mensagens em pouco tempo. Aguarde alguns minutos e tente novamente.',
+    contactError: 'Não foi possível enviar a mensagem. Confira os dados e tente novamente.',
   },
   es: {
     home: 'Inicio', directory: 'Productos y servicios', about: 'Acerca de', contact: 'Contacto',
@@ -16,6 +19,9 @@ const copy = {
     contactCta: 'Ponte en contacto', category: 'Categoría', price: 'Información de precio', duration: 'Duración',
     area: 'Zona de servicio', openingHours: 'Horario de atención', address: 'Dirección', email: 'Correo',
     phone: 'Teléfono', whatsapp: 'WhatsApp', website: 'Sitio web', googleBusiness: 'Perfil de Empresa en Google', privacy: 'Privacidad',
+    name: 'Nombre', message: 'Mensaje', sendMessage: 'Enviar mensaje', contactConsent: 'Acepto que mis datos se utilicen para responder a esta consulta.',
+    contactSuccess: 'Mensaje enviado. El comercio podrá responder usando los datos indicados.', contactRateLimited: 'Se enviaron demasiados mensajes. Espera unos minutos e inténtalo de nuevo.',
+    contactError: 'No se pudo enviar el mensaje. Revisa los datos e inténtalo de nuevo.',
   },
   en: {
     home: 'Home', directory: 'Products and services', about: 'About', contact: 'Contact',
@@ -24,6 +30,9 @@ const copy = {
     contactCta: 'Get in touch', category: 'Category', price: 'Price information', duration: 'Duration',
     area: 'Service area', openingHours: 'Opening hours', address: 'Address', email: 'Email',
     phone: 'Phone', whatsapp: 'WhatsApp', website: 'Business website', googleBusiness: 'Google Business Profile', privacy: 'Privacy',
+    name: 'Name', message: 'Message', sendMessage: 'Send message', contactConsent: 'I agree that this business may use my details to respond to this request.',
+    contactSuccess: 'Message sent. The business may contact you using the details provided.', contactRateLimited: 'Too many messages in a short time. Wait a few minutes and try again.',
+    contactError: 'The message could not be sent. Check the details and try again.',
   },
 } as const;
 
@@ -110,6 +119,26 @@ const renderContact = (site: PublicBusinessSite, labels: typeof copy['en']) => {
     ${contact.serviceArea ? `<div><span class="contact-label">${labels.area}</span><p>${escapeHtml(contact.serviceArea)}</p></div>` : ''}
     ${links.length ? `<nav class="contact-links" aria-label="${labels.contact}">${links.join('')}</nav>` : ''}
   </div>`;
+};
+
+const renderContactForm = (site: PublicBusinessSite, labels: typeof copy['en']) => {
+  const privacyPage = site.content.pages.find((page) => page.kind === 'privacy' && page.enabled);
+  const privacyLink = privacyPage
+    ? ` <a href="${escapeHtml(pagePath(site, privacyPage))}">${labels.privacy}</a>`
+    : '';
+  return `<section class="contact-form-section" aria-labelledby="contact-form-title">
+    <h2 id="contact-form-title">${labels.contactCta}</h2>
+    <form class="contact-form" action="/api/business-site-lead" method="post">
+      <input type="hidden" name="slug" value="${escapeHtml(site.slug)}">
+      <div class="form-trap" aria-hidden="true"><label for="site-website">Website</label><input id="site-website" name="website" tabindex="-1" autocomplete="off"></div>
+      <label>${labels.name}<input name="name" autocomplete="name" maxlength="120" required></label>
+      <label>${labels.email}<input type="email" name="email" autocomplete="email" maxlength="254" required></label>
+      <label>${labels.phone}<input type="tel" name="phone" autocomplete="tel" maxlength="40"></label>
+      <label>${labels.message}<textarea name="message" rows="5" maxlength="3000" required></textarea></label>
+      <label class="consent-field"><input type="checkbox" name="consent" required><span>${labels.contactConsent}${privacyLink}</span></label>
+      <button class="button button--primary" type="submit">${labels.sendMessage}</button>
+    </form>
+  </section>`;
 };
 
 const resolvePage = (content: BusinessSiteContent, route: string) => {
@@ -267,7 +296,7 @@ const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolveP
   if (resolved.kind === 'page' && resolved.page) {
     const page = resolved.page;
     if (page.kind === 'contact') {
-      return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${page.body ? paragraphs(page.body) : ''}${renderContact(site, labels)}</section>`;
+      return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${page.body ? paragraphs(page.body) : ''}${renderContact(site, labels)}${renderContactForm(site, labels)}</section>`;
     }
     if (page.kind === 'about') {
       return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title || content.about.title)}</h1>${paragraphs(page.body || content.about.body)}</section>`;
@@ -300,7 +329,7 @@ export const renderPublicBusinessSiteHtml = (
   site: PublicBusinessSite,
   route: string,
   origin: string,
-  options: { preview?: boolean } = {},
+  options: { preview?: boolean; leadState?: string | null } = {},
 ): { html: string; status: number; cacheTag: string } => {
   const content = site.content;
   const lang = content.seo.language || 'pt-BR';
@@ -321,7 +350,10 @@ export const renderPublicBusinessSiteHtml = (
   const indexable = !options.preview && exists && content.seo.indexable && (selectedPage?.indexable ?? true) && (selectedItem?.indexable ?? true);
   const robots = indexable ? 'index,follow' : 'noindex,nofollow';
   const logo = safeImageUrl(content.branding.logoUrl, origin);
-  const body = pageBody(site, resolved, origin, labels);
+  const leadNotice = resolved.kind === 'page' && resolved.page?.kind === 'contact' && options.leadState
+    ? `<p class="form-notice" role="status" aria-live="polite">${options.leadState === 'success' ? labels.contactSuccess : options.leadState === 'rate-limited' ? labels.contactRateLimited : labels.contactError}</p>`
+    : '';
+  const body = `${pageBody(site, resolved, origin, labels)}${leadNotice}`;
   const primaryColor = safeColor(content.branding.primaryColor, '#1d4ed8');
   const accentColor = safeColor(content.branding.accentColor, '#f59e0b');
   const jsonLd = exists ? buildJsonLd(site, origin, canonical, title, description, resolved) : '';
@@ -342,6 +374,9 @@ ${schema}
 <style>
 :root{color-scheme:light;--primary:${primaryColor};--accent:${accentColor};--ink:#17191f;--muted:#626875;--surface:#fff;--soft:#f5f6f8;--line:#e5e7eb;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--surface);color:var(--ink);line-height:1.65}a{color:inherit}img{max-width:100%}.site-shell{min-height:100vh;display:flex;flex-direction:column}.site-header{position:relative;z-index:2;border-bottom:1px solid var(--line);background:#ffffffed;backdrop-filter:blur(12px)}.site-header__inner,.site-footer__inner{width:min(1160px,calc(100% - 40px));margin:auto;display:flex;align-items:center;justify-content:space-between;gap:24px}.site-header__inner{min-height:76px}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:750;font-size:1.1rem;letter-spacing:-.025em}.brand img{display:block;max-height:44px;max-width:180px;object-fit:contain}.site-nav{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 22px}.site-nav a{text-decoration:none;font-size:.91rem;font-weight:600;color:var(--muted)}.site-nav a:hover,.text-link:hover{color:var(--primary)}main{flex:1}.hero{position:relative;isolation:isolate;min-height:460px;display:flex;align-items:center;overflow:hidden;background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 9%,white),white 60%,color-mix(in srgb,var(--accent) 13%,white));padding:72px max(24px,calc((100vw - 1160px)/2))}.hero--image:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,#fffef9 0%,#fffef9ed 48%,#fffef977 100%),var(--hero-image) center/cover no-repeat;opacity:.95}.hero__content{max-width:680px}.eyebrow{text-transform:uppercase;letter-spacing:.17em;font-size:.72rem;font-weight:750;color:var(--primary);margin:0 0 14px}.hero h1,.section h1{font-size:clamp(2.35rem,6vw,4.65rem);letter-spacing:-.055em;line-height:1.02;margin:0 0 20px;max-width:15ch}.hero__copy{font-size:clamp(1.03rem,2vw,1.2rem);max-width:60ch;color:var(--muted);margin:0 0 28px}.button{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:11px 20px;border-radius:999px;text-decoration:none;font-weight:700;transition:transform .15s ease,background .15s ease}.button:hover{transform:translateY(-1px)}.button--primary{background:var(--primary);color:white}.section{padding:72px max(24px,calc((100vw - 1160px)/2))}.section--narrow{max-width:820px;margin:auto;padding-left:24px;padding-right:24px}.section--soft{background:var(--soft)}.section--contact{border-top:1px solid var(--line)}.section h1,.section h2{font-size:clamp(1.9rem,4vw,3rem);letter-spacing:-.045em;line-height:1.1;margin:0 0 22px}.section p:not(.eyebrow){color:var(--muted);white-space:normal}.section-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:28px}.section-heading h2{margin:0}.text-link{font-weight:700;text-decoration:none;color:var(--primary)}.item-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.item-card{overflow:hidden;border:1px solid var(--line);border-radius:18px;background:white;box-shadow:0 10px 32px #1018280a}.item-card__image-link{display:block;background:var(--soft)}.item-card__image{display:block;width:100%;height:210px;object-fit:cover}.item-card__placeholder{background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 10%,white),color-mix(in srgb,var(--accent) 16%,white))}.item-card__body{padding:18px}.item-card h3{margin:0 0 8px;font-size:1.18rem;line-height:1.25}.item-card h3 a{text-decoration:none}.item-card p{margin:0 0 14px;color:var(--muted)}.item-card .eyebrow{font-size:.66rem;margin-bottom:8px}.item-card__price{font-weight:700!important;color:var(--ink)!important}.contact-grid{display:grid;gap:20px;grid-template-columns:repeat(2,minmax(0,1fr));margin-top:24px}.contact-grid p{margin:4px 0 0}.contact-label{font-size:.75rem;font-weight:750;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}.contact-links{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:12px 20px}.contact-links a{color:var(--primary);font-weight:650}.item-detail__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center}.detail-image{width:100%;max-height:560px;object-fit:cover;border-radius:24px}.item-detail h1{max-width:18ch}.item-detail__summary{font-size:1.2rem}.item-facts{display:flex;flex-wrap:wrap;gap:18px;margin:24px 0}.item-facts div{min-width:130px}.item-facts dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}.item-facts dd{margin:2px 0 0;font-weight:700}.section--related{padding-left:0;padding-right:0}.faq-item{border-bottom:1px solid var(--line);padding:16px 0}.faq-item summary{font-weight:700;cursor:pointer}.faq-item p{margin-bottom:0}.site-footer{border-top:1px solid var(--line);background:#fafafa}.site-footer__inner{min-height:76px;color:var(--muted);font-size:.85rem}.site-footer a{font-weight:650}.site-footer__links{display:flex;flex-wrap:wrap;gap:16px}.site-footer__links a{text-decoration:none}.not-found{min-height:48vh;display:grid;align-content:center}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}@media(max-width:760px){.site-header__inner{align-items:flex-start;flex-direction:column;padding:14px 0}.site-nav{justify-content:flex-start;gap:8px 15px}.site-nav a{font-size:.84rem}.hero{min-height:390px;padding:54px 24px}.section{padding-top:52px;padding-bottom:52px}.item-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.item-card__image{height:165px}.item-card__body{padding:14px}.item-detail__grid{grid-template-columns:1fr;gap:20px}.detail-image{max-height:360px}.site-footer__inner{align-items:flex-start;flex-direction:column;padding:20px 0}.contact-grid{grid-template-columns:1fr}.section-heading{align-items:flex-start;flex-direction:column}}@media(max-width:480px){.site-header__inner,.site-footer__inner{width:calc(100% - 28px)}.hero,.section{padding-left:16px;padding-right:16px}.item-grid{grid-template-columns:1fr}.item-card__image{height:220px}.site-nav{gap:7px 12px}}
 .category-nav{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 28px}.category-nav a{padding:7px 12px;border:1px solid var(--line);border-radius:999px;color:var(--primary);font-size:.86rem;font-weight:650;text-decoration:none}
+</style>
+<style>
+.contact-form-section{margin-top:38px}.contact-form{display:grid;gap:16px;margin-top:20px}.contact-form>label:not(.consent-field){display:grid;gap:6px;font-size:.92rem;font-weight:650}.contact-form input:not([type=checkbox]),.contact-form textarea{width:100%;border:1px solid var(--line);border-radius:10px;background:white;padding:12px;font:inherit;color:var(--ink)}.contact-form textarea{resize:vertical}.contact-form .consent-field{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;font-weight:400}.contact-form .consent-field input{margin-top:.32rem;accent-color:var(--primary)}.contact-form .consent-field a{margin-left:4px;color:var(--primary)}.contact-form .button{width:fit-content;border:0;cursor:pointer;font:inherit;font-weight:700}.form-notice{width:min(772px,calc(100% - 32px));margin:20px auto;padding:14px 18px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}.form-trap{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
 </style>
 </head>
 <body>${options.preview ? `<div style="position:sticky;top:0;z-index:5;padding:10px 16px;background:#111827;color:white;text-align:center;font:600 13px/1.4 system-ui">PREVIEW — <a style="color:white" href="/site">${escapeHtml(lang === 'pt-BR' ? 'Voltar ao editor do site' : lang === 'es' ? 'Volver al editor del sitio' : 'Back to site editor')}</a></div>` : ''}<div class="site-shell">

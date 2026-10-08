@@ -54,7 +54,11 @@ export default {
         return htmlResponse(unavailableHtml('Page not found', 'This business site is not available.', origin), 404, { 'Cache-Control': 'public, max-age=60' });
       }
       const site = raw as unknown as PublicBusinessSite;
-      const rendered = renderPublicBusinessSiteHtml(site, route, origin);
+      const leadStateValue = url.searchParams.get('lead');
+      const leadState = leadStateValue === 'success' || leadStateValue === 'rate-limited' || leadStateValue === 'error'
+        ? leadStateValue
+        : null;
+      const rendered = renderPublicBusinessSiteHtml(site, route, origin, { leadState });
       return htmlResponse(rendered.html, rendered.status, { 'Cache-Control': 'no-store' });
     } catch {
       return htmlResponse(unavailableHtml('Site temporarily unavailable', 'Please try again in a few minutes.', origin), 503, { 'Cache-Control': 'no-store' });

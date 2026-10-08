@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUpRight, Eye, Globe2, History, Plus, Save, Send, Trash2, Undo2 } from 'lucide-react';
+import { ArrowUpRight, CheckCircle2, Eye, Globe2, History, Plus, Save, Send, Trash2, Undo2, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLocale } from './LocaleProvider';
 import { Badge } from './ui/badge';
@@ -7,11 +7,19 @@ import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { useAuth } from './AuthProvider';
+import { supabase } from '../lib/supabase';
 import {
   type BusinessSiteContent,
   type BusinessSiteItem,
   type BusinessSitePage,
 } from '../lib/businessSites';
+import {
+  fetchBusinessSiteLeads,
+  updateBusinessSiteLeadStatus,
+  type BusinessSiteLead,
+  type BusinessSiteLeadStatus,
+} from '../lib/db/businessSites';
 import { normalizeSlug } from '../lib/slug';
 import {
   fetchBusinessSiteDraft,
@@ -20,13 +28,14 @@ import {
   saveBusinessSiteDraft,
 } from '../lib/db/businessSites';
 
-type Section = 'overview' | 'pages' | 'catalog' | 'seo' | 'history';
+type Section = 'overview' | 'pages' | 'catalog' | 'leads' | 'seo' | 'history';
 type ObjectSection = 'branding' | 'hero' | 'about' | 'contact' | 'seo';
 
 const sections: { id: Section; label: string }[] = [
   { id: 'overview', label: 'Site content' },
   { id: 'pages', label: 'Pages' },
   { id: 'catalog', label: 'Products and services' },
+  { id: 'leads', label: 'Leads' },
   { id: 'seo', label: 'SEO and local presence' },
   { id: 'history', label: 'Publication history' },
 ];
@@ -65,6 +74,85 @@ const TextAreaField: React.FC<{
   </div>
 );
 
+const SiteImageField: React.FC<{
+  label: string;
+  value: string;
+  ownerId?: string;
+  onChange: (value: string) => void;
+}> = ({ label, value, ownerId, onChange }) => {
+  const { t } = useLocale();
+  const inputId = React.useId();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleUpload = async (file?: File) => {
+    if (!file) return;
+    setError('');
+    if (!ownerId) {
+      setError(t('Unable to identify the business owner for this upload.'));
+      return;
+    }
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setError(t('Use a JPG, PNG, or WebP image.'));
+      return;
+    }
+    if (file.size > 6 * 1024 * 1024) {
+      setError(t('Image must be 6MB or smaller.'));
+      return;
+    }
+
+    const extension = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : 'webp';
+    const path = `${ownerId}/site/${crypto.randomUUID()}.${extension}`;
+    setUploading(true);
+    try {
+      const { error: uploadError } = await supabase.storage.from('campaign-assets').upload(path, file, {
+        upsert: false,
+        contentType: file.type,
+      });
+      if (uploadError) {
+        setError(t('Unable to upload image right now. Please try again.'));
+        return;
+      }
+
+      const { data } = supabase.storage.from('campaign-assets').getPublicUrl(path);
+      if (!data.publicUrl) {
+        setError(t('Image uploaded, but public URL could not be resolved.'));
+        return;
+      }
+      onChange(data.publicUrl);
+    } catch {
+      setError(t('Unable to upload image right now. Please try again.'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={inputId}>{label}</Label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input id={inputId} type="url" value={value} onChange={(event) => onChange(event.target.value)} placeholder="https://..." />
+        <input
+          ref={fileInput}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(event) => {
+            void handleUpload(event.target.files?.[0]);
+            event.target.value = '';
+          }}
+        />
+        <Button type="button" variant="outline" className="shrink-0" disabled={uploading} onClick={() => fileInput.current?.click()}>
+          <Upload className="mr-2 h-4 w-4" />{uploading ? t('Uploading...') : t('Upload image')}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{t('JPG, PNG, or WebP up to 6MB.')}</p>
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+};
+
 const ToggleField: React.FC<{
   label: string;
   checked: boolean;
@@ -84,6 +172,7 @@ const emptyNewItem = (): Omit<BusinessSiteItem, 'id'> => ({
 
 export const BusinessSiteAdminPage: React.FC = () => {
   const { t } = useLocale();
+  const { currentOwner } = useAuth();
   const navigate = useNavigate();
   const [section, setSection] = useState<Section>('overview');
   const [site, setSite] = useState<Awaited<ReturnType<typeof fetchBusinessSiteDraft>>['data']>(null);
@@ -94,6 +183,9 @@ export const BusinessSiteAdminPage: React.FC = () => {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [postalCodeLookupStatus, setPostalCodeLookupStatus] = useState<'idle' | 'loading' | 'success' | 'not-found' | 'error'>('idle');
+  const [leads, setLeads] = useState<BusinessSiteLead[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsError, setLeadsError] = useState('');
   const postalCodeLookupRequestId = useRef(0);
   const postalCodeLookupController = useRef<AbortController | null>(null);
 
@@ -115,6 +207,20 @@ export const BusinessSiteAdminPage: React.FC = () => {
   useEffect(() => () => {
     postalCodeLookupController.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (section !== 'leads') return;
+    let cancelled = false;
+    setLeadsLoading(true);
+    setLeadsError('');
+    void fetchBusinessSiteLeads().then((result) => {
+      if (cancelled) return;
+      setLeads(result.data);
+      setLeadsError(result.error ? t(result.error) : '');
+      setLeadsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [section, t]);
 
   const hasChanges = useMemo(() => Boolean(site && draft && JSON.stringify(site.draftContent) !== JSON.stringify(draft)), [site, draft]);
   const publicUrl = site?.slug ? `${window.location.origin}/empresa/${site.slug}` : '';
@@ -193,6 +299,16 @@ export const BusinessSiteAdminPage: React.FC = () => {
       ...current,
       items: current.items.map((item) => item.id === id ? { ...item, ...changes } : item),
     }) : current);
+  };
+
+  const handleLeadStatusChange = async (id: string, status: BusinessSiteLeadStatus) => {
+    setLeadsError('');
+    const result = await updateBusinessSiteLeadStatus(id, status);
+    if (!result.ok) {
+      setLeadsError(t('Unable to update this enquiry.'));
+      return;
+    }
+    setLeads((current) => current.map((lead) => lead.id === id ? { ...lead, status } : lead));
   };
 
   const persistDraft = async () => {
@@ -294,6 +410,17 @@ export const BusinessSiteAdminPage: React.FC = () => {
     );
   }
 
+  const setupSteps: { id: string; label: string; section: Section; complete: boolean }[] = [
+    { id: 'homepage', label: 'Complete the homepage', section: 'overview', complete: Boolean(draft.hero.title.trim() && draft.hero.description.trim()) },
+    { id: 'identity', label: 'Add your visual identity', section: 'overview', complete: Boolean(draft.branding.logoUrl.trim() || draft.branding.primaryColor !== '#1d4ed8' || draft.branding.accentColor !== '#f59e0b') },
+    { id: 'contact', label: 'Add contact and local details', section: 'overview', complete: Boolean((draft.contact.email || draft.contact.phone || draft.contact.whatsapp) && (draft.contact.address || draft.contact.city || draft.contact.serviceArea)) },
+    { id: 'pages', label: 'Write the about page', section: 'pages', complete: Boolean(draft.pages.some((page) => page.kind === 'about' && page.body.trim())) },
+    { id: 'catalog', label: 'Add a product or service', section: 'catalog', complete: draft.items.some((item) => item.enabled) },
+    { id: 'seo', label: 'Review search details', section: 'seo', complete: Boolean(draft.seo.title.trim() && draft.seo.description.trim()) },
+    { id: 'publish', label: 'Publish your site', section: 'overview', complete: Boolean(site.publishedAt && !hasChanges) },
+  ];
+  const completedSetupSteps = setupSteps.filter((step) => step.complete).length;
+
   return (
     <div className="h-full space-y-5 overflow-y-auto bg-gray-50/50 p-3 pb-10 sm:p-5 md:p-8">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -339,6 +466,26 @@ export const BusinessSiteAdminPage: React.FC = () => {
       {error && <div role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{error}</div>}
       {message && <div role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</div>}
 
+      <Card>
+        <CardContent className="space-y-4 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><h2 className="font-semibold">{t('Guided setup')}</h2><p className="text-sm text-muted-foreground">{t('Follow these steps to prepare the site. Save your draft to keep your progress.')}</p></div>
+            <Badge variant={completedSetupSteps === setupSteps.length ? 'default' : 'secondary'}>{completedSetupSteps}/{setupSteps.length} {t('steps complete')}</Badge>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={setupSteps.length} aria-valuenow={completedSetupSteps} aria-label={t('Site setup progress')}>
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(completedSetupSteps / setupSteps.length) * 100}%` }} />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            {setupSteps.map((step) => (
+              <button key={step.id} type="button" onClick={() => setSection(step.section)} className="flex min-h-11 items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-left text-sm transition hover:bg-muted/60">
+                <CheckCircle2 className={`h-4 w-4 shrink-0 ${step.complete ? 'text-emerald-600' : 'text-muted-foreground/50'}`} aria-hidden="true" />
+                <span>{t(step.label)}</span>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1" role="tablist" aria-label={t('Website sections')}>
         {sections.map((item) => (
           <button
@@ -364,13 +511,13 @@ export const BusinessSiteAdminPage: React.FC = () => {
             <TextAreaField label={t('Homepage introduction')} value={draft.hero.description} onChange={(value) => setObjectField('hero', 'description', value)} />
             <div className="grid gap-4 sm:grid-cols-2">
               <InputField label={t('Button link')} value={draft.hero.ctaUrl} onChange={(value) => setObjectField('hero', 'ctaUrl', value)} placeholder="https:// or /empresa/..." />
-              <InputField label={t('Cover image URL')} value={draft.hero.imageUrl} onChange={(value) => setObjectField('hero', 'imageUrl', value)} placeholder="https://..." />
+              <SiteImageField label={t('Cover image URL')} ownerId={currentOwner?.id} value={draft.hero.imageUrl} onChange={(value) => setObjectField('hero', 'imageUrl', value)} />
             </div>
           </CardContent></Card>
 
           <Card><CardContent className="space-y-4 p-4 sm:p-6">
             <div><h2 className="text-lg font-semibold">{t('Brand and about')}</h2><p className="text-sm text-muted-foreground">{t('Use your business identity and a real description.')}</p></div>
-            <InputField label={t('Logo URL')} value={draft.branding.logoUrl} onChange={(value) => setObjectField('branding', 'logoUrl', value)} placeholder="https://..." />
+            <SiteImageField label={t('Logo URL')} ownerId={currentOwner?.id} value={draft.branding.logoUrl} onChange={(value) => setObjectField('branding', 'logoUrl', value)} />
             <div className="grid gap-4 sm:grid-cols-2">
               <InputField label={t('Primary color')} type="color" value={draft.branding.primaryColor} onChange={(value) => setObjectField('branding', 'primaryColor', value)} />
               <InputField label={t('Accent color')} type="color" value={draft.branding.accentColor} onChange={(value) => setObjectField('branding', 'accentColor', value)} />
@@ -440,7 +587,8 @@ export const BusinessSiteAdminPage: React.FC = () => {
                 <InputField label={t('SEO title')} value={page.metaTitle} onChange={(value) => updatePage(page.id, { metaTitle: value })} />
               </div>
               <InputField label={t('SEO description')} value={page.metaDescription} onChange={(value) => updatePage(page.id, { metaDescription: value })} />
-              {page.kind !== 'contact' && <TextAreaField label={t('Page content')} value={page.body} onChange={(value) => updatePage(page.id, { body: value })} rows={5} />}
+              {page.kind !== 'contact' && <TextAreaField label={t('Page content')} value={page.body} onChange={(value) => updatePage(page.id, { body: value })} placeholder={page.kind === 'faq' ? t('Put each FAQ question and answer on one line, separated by a question mark.') : undefined} rows={5} />}
+              {page.kind === 'privacy' && <p className="text-xs text-muted-foreground">{t('Review this privacy notice for your business before making the page public.')}</p>}
               {page.kind === 'landing' && draft.items.length > 0 && (
                 <div className="space-y-2">
                   <Label>{t('Featured products and services')}</Label>
@@ -454,7 +602,14 @@ export const BusinessSiteAdminPage: React.FC = () => {
               <div className="grid gap-2 sm:grid-cols-3">
                 <ToggleField label={t('Show in navigation')} checked={page.showInNavigation} onChange={(value) => updatePage(page.id, { showInNavigation: value })} />
                 <ToggleField label={t('Index this page')} checked={page.indexable} onChange={(value) => updatePage(page.id, { indexable: value })} />
-                <ToggleField label={t('Page is published')} checked={page.enabled} onChange={(value) => updatePage(page.id, { enabled: value })} />
+                <ToggleField label={t('Page is published')} checked={page.enabled} onChange={(value) => {
+                  if (value && (page.kind === 'faq' || page.kind === 'privacy') && !page.body.trim()) {
+                    setError(t('Add page content before publishing this page.'));
+                    return;
+                  }
+                  setError('');
+                  updatePage(page.id, { enabled: value });
+                }} />
               </div>
             </CardContent></Card>
           ))}
@@ -474,7 +629,7 @@ export const BusinessSiteAdminPage: React.FC = () => {
                 <InputField label={t('URL slug')} value={newItem.slug} onChange={(value) => setNewItem({ ...newItem, slug: normalizeSlug(value) })} />
                 <InputField label={t('Price or price range (optional)')} value={newItem.priceLabel} onChange={(value) => setNewItem({ ...newItem, priceLabel: value })} />
                 <InputField label={t('Duration (optional)')} value={newItem.duration} onChange={(value) => setNewItem({ ...newItem, duration: value })} />
-                <InputField label={t('Image URL')} value={newItem.imageUrl} onChange={(value) => setNewItem({ ...newItem, imageUrl: value })} placeholder="https://..." />
+                <SiteImageField label={t('Image URL')} ownerId={currentOwner?.id} value={newItem.imageUrl} onChange={(value) => setNewItem({ ...newItem, imageUrl: value })} />
                 <InputField label={t('Area served')} value={newItem.areaServed} onChange={(value) => setNewItem({ ...newItem, areaServed: value })} />
                 <InputField label={t('Button link')} value={newItem.ctaUrl} onChange={(value) => setNewItem({ ...newItem, ctaUrl: value })} placeholder="https:// or tel:" />
               </div>
@@ -503,7 +658,7 @@ export const BusinessSiteAdminPage: React.FC = () => {
                 <InputField label={t('URL slug')} value={item.slug} onChange={(value) => updateItem(item.id, { slug: normalizeSlug(value) })} />
                 <InputField label={t('Price or price range (optional)')} value={item.priceLabel} onChange={(value) => updateItem(item.id, { priceLabel: value })} />
                 <InputField label={t('Duration (optional)')} value={item.duration} onChange={(value) => updateItem(item.id, { duration: value })} />
-                <InputField label={t('Image URL')} value={item.imageUrl} onChange={(value) => updateItem(item.id, { imageUrl: value })} />
+                <SiteImageField label={t('Image URL')} ownerId={currentOwner?.id} value={item.imageUrl} onChange={(value) => updateItem(item.id, { imageUrl: value })} />
                 <InputField label={t('Area served')} value={item.areaServed} onChange={(value) => updateItem(item.id, { areaServed: value })} />
                 <InputField label={t('Button label')} value={item.ctaLabel} onChange={(value) => updateItem(item.id, { ctaLabel: value })} />
                 <InputField label={t('Button link')} value={item.ctaUrl} onChange={(value) => updateItem(item.id, { ctaUrl: value })} />
@@ -516,6 +671,30 @@ export const BusinessSiteAdminPage: React.FC = () => {
                 <ToggleField label={t('Show in the public directory')} checked={item.enabled} onChange={(value) => updateItem(item.id, { enabled: value })} />
                 <ToggleField label={t('Feature on the homepage')} checked={item.featured} onChange={(value) => updateItem(item.id, { featured: value })} />
                 <ToggleField label={t('Index this item')} checked={item.indexable} onChange={(value) => updateItem(item.id, { indexable: value })} />
+              </div>
+            </CardContent></Card>
+          ))}
+        </div>
+      )}
+
+      {section === 'leads' && (
+        <div className="space-y-4">
+          <div><h2 className="text-xl font-semibold">{t('Leads')}</h2><p className="text-sm text-muted-foreground">{t('Messages sent from the public contact form.')}</p></div>
+          {leadsError && <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{leadsError}</p>}
+          {leadsLoading ? <p className="text-sm text-muted-foreground">{t('Loading...')}</p> : leads.length === 0 ? (
+            <Card><CardContent className="p-6 text-sm text-muted-foreground">{t('No site enquiries yet.')}</CardContent></Card>
+          ) : leads.map((lead) => (
+            <Card key={lead.id}><CardContent className="space-y-3 p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0"><h3 className="font-semibold">{lead.name}</h3><p className="text-xs text-muted-foreground">{t('Lead received')}: {new Date(lead.createdAt).toLocaleString()}</p></div>
+                <select aria-label={t('Lead status')} className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={lead.status} onChange={(event) => void handleLeadStatusChange(lead.id, event.target.value as BusinessSiteLeadStatus)}>
+                  <option value="new">{t('New')}</option><option value="contacted">{t('Contacted')}</option><option value="closed">{t('Closed')}</option>
+                </select>
+              </div>
+              <p className="whitespace-pre-wrap break-words text-sm">{lead.message}</p>
+              <div className="flex flex-wrap gap-3 text-sm">
+                {lead.email && <a className="text-primary underline underline-offset-2" href={`mailto:${lead.email}`}>{lead.email}</a>}
+                {lead.phone && <a className="text-primary underline underline-offset-2" href={`tel:${lead.phone.replace(/[^+\d]/g, '')}`}>{lead.phone}</a>}
               </div>
             </CardContent></Card>
           ))}

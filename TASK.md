@@ -95,12 +95,18 @@ Não inferir valor gasto nem conceder pontos por compras enquanto o sistema não
 - [x] Aplicar o patch aditivo no projeto Supabase vinculado.
 - [x] Validar manualmente em produção o fluxo integrado na interface e as permissões RLS após a implantação.
 
-### Fase 4 — Comunicação e integrações [ ]
+### Fase 4 — Comunicação e integrações [~]
 
-- [ ] Preparar notificações de progresso e recompensa por canal configurável, respeitando consentimento e preferências do cliente.
-- [ ] Avaliar integração com WhatsApp somente com provedor, templates e configuração oficial adequados.
-- [ ] Avaliar integração com Instagram somente por APIs oficiais da Meta, permissões aprovadas e regras vigentes. Oferecer revisão manual como alternativa; não simular acesso a mensagens ou interações privadas.
-- [ ] Registrar falhas e permitir reprocessamento seguro sem duplicar pontos ou recompensas.
+A implementação inicial baseada em [docs/zernio_whatsapp_instagram_meta.md](docs/zernio_whatsapp_instagram_meta.md) está no repositório. Ainda depende da migration aditiva, secrets no Vercel, agendamento frequente do worker e validação com contas/templates reais. O Instagram fica somente conectado; DMs e publicação não são automatizados.
+
+- [x] Preparar preferências de WhatsApp com opt-in explícito no cadastro e revogação pelo cartão público.
+- [x] Conectar perfil Zernio e canais WhatsApp/Instagram por OAuth em `/settings`, com validação server-side do owner e da conta remota.
+- [x] Associar templates WhatsApp aprovados, sem variáveis, aos eventos de visita validada, missão concluída e recompensa solicitada.
+- [x] Registrar esses eventos em outbox idempotente; o worker revalida consentimento e aprovação antes do envio e usa chave idempotente.
+- [x] Guardar tentativas/erros e permitir reprocessamento owner-only de falhas sem criar novo evento de fidelidade.
+- [~] Aplicar `supabase/legacy-patches/add_communications_zernio.sql`, configurar `SUPABASE_SERVICE_ROLE_KEY`, `ZERNIO_ENCRYPTION_KEY`, `COMMUNICATIONS_CRON_SECRET`/`CRON_SECRET` e `APP_ORIGIN` no Vercel e agendar `/api/zernio-worker`. O worker ainda não foi validado com contas reais.
+- [x] Criar, editar e solicitar exclusão de variantes de templates WhatsApp pelo painel; a primeira versão aceita modelos simples de texto, sem variáveis. Edição e exclusão sincronizam o estado local e desativam o envio enquanto a Meta revisa a mudança.
+- [ ] Automatizar mensagens do Instagram; só iniciar após definir o caso de uso, consentimento e permissões específicas da Meta.
 
 ## Direção técnica para o banco e a segurança
 
@@ -154,6 +160,6 @@ Esses itens exigem decisão de produto e escopo próprios antes de implementaç�
 - [README do Stampfy](README.md)
 - [Schema base do Supabase](supabase/migration.sql)
 
-## Módulo em implementação: sites institucionais
+## Módulo de sites institucionais
 
-O plano, escopo e andamento dos sites públicos por comércio estão em [docs/sites-institucionais.md](docs/sites-institucionais.md). A primeira entrega de editor, catálogo público, publicação e SEO está no código, mas ainda depende de aplicar a migration no Supabase e validar o deploy; formulários, domínios próprios e integrações continuam pendentes.
+O MVP do site por comércio está implementado no repositório: editor assistido, uploads, páginas públicas, catálogo, SEO básico, publicação e formulário/caixa de entrada de leads. O plano, configuração e pendências estão em [docs/sites-institucionais.md](docs/sites-institucionais.md). Para ativar em produção ainda é necessário aplicar `add_business_sites.sql` e `add_business_site_leads.sql`, configurar `SUPABASE_SERVICE_ROLE_KEY` server-only no Vercel e validar as rotas públicas. Domínio próprio, analytics/Search Console, auditoria detalhada e validação em produção continuam pendentes.

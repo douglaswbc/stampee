@@ -17,6 +17,7 @@ import { fetchCustomersWithCards } from './lib/db/customers';
 import { parseCustomerLoyaltyPoints } from './lib/db/loyaltyPoints';
 import { PublicLoyaltyPoints } from './components/PublicLoyaltyPoints';
 import { PublicLoyaltyRewards } from './components/PublicLoyaltyRewards';
+import { PublicNotificationPreferences } from './components/PublicNotificationPreferences';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildCampaignSignupUrl, buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
 import { fetchPublicReferralCode } from './lib/db/publicSignup';
@@ -368,6 +369,7 @@ const PublicCardWrapper: React.FC = () => {
         )}
       </div>
       <PublicLoyaltyPoints summary={loyaltyPoints} referralUrl={referralUrl} />
+      <PublicNotificationPreferences slug={slug ?? ''} cardUniqueId={card.uniqueId} />
       <PublicLoyaltyRewards slug={slug ?? ''} cardUniqueId={card.uniqueId} onPointsRefresh={refreshLoyaltyPoints} />
       {withSuspense(<MissionProgressList missions={missions} timeZone={timeZone} />)}
     </div>

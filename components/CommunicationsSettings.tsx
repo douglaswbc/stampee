@@ -1,0 +1,507 @@
+import React from 'react';
+import { Check, LoaderCircle, MessageCircle, Pencil, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { useLocale } from './LocaleProvider';
+import {
+  callZernioApi,
+  type ZernioIntegrationStatus,
+  type ZernioMapping,
+  type ZernioProfile,
+  type ZernioTemplate,
+} from '../lib/zernioApi';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+
+type EventType = 'visit_validated' | 'mission_completed' | 'reward_claimed';
+const EVENTS: { id: EventType; label: string; description: string }[] = [
+  { id: 'visit_validated', label: 'Validated visit', description: 'After a staff member validates a visit.' },
+  { id: 'mission_completed', label: 'Mission completed', description: 'When the customer completes a mission.' },
+  { id: 'reward_claimed', label: 'Reward claimed', description: 'When the customer claims a catalog reward.' },
+];
+
+type ProfileResponse = { profiles?: ZernioProfile[] };
+type TemplateResponse = { templates?: ZernioTemplate[]; mappings?: ZernioMapping[] };
+type NotificationRecord = {
+  id: string;
+  event_type: EventType;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | 'skipped';
+  attempt_count: number;
+  last_error_code?: string | null;
+  created_at: string;
+  sent_at?: string | null;
+};
+type NotificationAttempt = {
+  id: string;
+  outbox_id: string;
+  attempt_number: number;
+  outcome: 'sent' | 'retry' | 'failed' | 'skipped';
+  error_code?: string | null;
+  created_at: string;
+};
+type StatusResponse = { integration?: ZernioIntegrationStatus; mappings?: ZernioMapping[]; notifications?: NotificationRecord[]; attempts?: NotificationAttempt[] };
+
+const simpleTemplateBody = (template: ZernioTemplate) => {
+  const components = template.components ?? [];
+  if (components.length !== 1 || String(components[0]?.type || '').toUpperCase() !== 'BODY') return null;
+  const text = components[0]?.text;
+  return typeof text === 'string' && !/\{\{[^{}]+\}\}/.test(text) ? text : null;
+};
+
+export const CommunicationsSettings: React.FC = () => {
+  const { t } = useLocale();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [integration, setIntegration] = React.useState<ZernioIntegrationStatus | null>(null);
+  const [profiles, setProfiles] = React.useState<ZernioProfile[]>([]);
+  const [templates, setTemplates] = React.useState<ZernioTemplate[]>([]);
+  const [mappings, setMappings] = React.useState<ZernioMapping[]>([]);
+  const [notifications, setNotifications] = React.useState<NotificationRecord[]>([]);
+  const [notificationAttempts, setNotificationAttempts] = React.useState<NotificationAttempt[]>([]);
+  const [newTemplateName, setNewTemplateName] = React.useState('');
+  const [newTemplateLanguage, setNewTemplateLanguage] = React.useState('pt_BR');
+  const [newTemplateCategory, setNewTemplateCategory] = React.useState('UTILITY');
+  const [newTemplateBody, setNewTemplateBody] = React.useState('');
+  const [editingTemplateKey, setEditingTemplateKey] = React.useState('');
+  const [editingTemplateBody, setEditingTemplateBody] = React.useState('');
+  const [selectedProfile, setSelectedProfile] = React.useState('');
+  const [apiKey, setApiKey] = React.useState('');
+  const [countryCode, setCountryCode] = React.useState('55');
+  const [selection, setSelection] = React.useState<Record<EventType, string>>({
+    visit_validated: '',
+    mission_completed: '',
+    reward_claimed: '',
+  });
+  const [enabled, setEnabled] = React.useState<Record<EventType, boolean>>({
+    visit_validated: false,
+    mission_completed: false,
+    reward_claimed: false,
+  });
+  const [busy, setBusy] = React.useState('');
+  const [error, setError] = React.useState('');
+  const [notice, setNotice] = React.useState('');
+
+  const refreshStatus = React.useCallback(async () => {
+    const response = await callZernioApi<StatusResponse>({ action: 'status' });
+    const nextIntegration = response.integration ?? null;
+    setIntegration(nextIntegration);
+    setSelectedProfile(nextIntegration?.zernio_profile_id ?? '');
+    setCountryCode(nextIntegration?.phone_country_code ?? '55');
+    const nextMappings = response.mappings ?? [];
+    setMappings(nextMappings);
+    setNotifications(response.notifications ?? []);
+    setNotificationAttempts(response.attempts ?? []);
+    const nextSelection = { visit_validated: '', mission_completed: '', reward_claimed: '' } as Record<EventType, string>;
+    const nextEnabled = { visit_validated: false, mission_completed: false, reward_claimed: false } as Record<EventType, boolean>;
+    nextMappings.forEach((mapping) => {
+      if (!EVENTS.some((event) => event.id === mapping.event_type)) return;
+      const eventType = mapping.event_type as EventType;
+      nextSelection[eventType] = mapping.template_name + '::' + mapping.template_language;
+      nextEnabled[eventType] = mapping.enabled;
+    });
+    setSelection(nextSelection);
+    setEnabled(nextEnabled);
+    if (nextIntegration?.hasZernioKey) {
+      const profileResponse = await callZernioApi<ProfileResponse>({ action: 'profiles' });
+      setProfiles(profileResponse.profiles ?? []);
+    }
+    if (nextIntegration?.whatsapp_account_id) {
+      const templateResponse = await callZernioApi<TemplateResponse>({ action: 'list_templates' });
+      setTemplates(templateResponse.templates ?? []);
+      setMappings(templateResponse.mappings ?? nextMappings);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+    void (async () => {
+      try {
+        const connected = searchParams.get('connected');
+        const providerError = searchParams.get('error');
+        const accountId = searchParams.get('accountId');
+        const profileId = searchParams.get('profileId');
+        if (providerError) {
+          setError(t('Zernio authorization was canceled or could not be completed.'));
+          setSearchParams({ tab: 'communications' }, { replace: true });
+        } else if ((connected === 'whatsapp' || connected === 'instagram') && accountId && profileId) {
+          setBusy('callback');
+          await callZernioApi({
+            action: 'finish_callback',
+            channel: connected,
+            connected,
+            profileId,
+            accountId,
+          });
+          setNotice(t('Social account connected. The account was verified with Zernio.'));
+          setSearchParams({ tab: 'communications' }, { replace: true });
+        }
+        await refreshStatus();
+      } catch (loadError) {
+        if (active) setError(loadError instanceof Error ? loadError.message : t('Communication settings could not be loaded.'));
+      } finally {
+        if (active) setBusy('');
+      }
+    })();
+    return () => { active = false; };
+  }, [refreshStatus, searchParams, setSearchParams, t]);
+
+  const withBusy = async (key: string, operation: () => Promise<void>) => {
+    setBusy(key);
+    setError('');
+    setNotice('');
+    try {
+      await operation();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : t('Communication settings could not be updated.'));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const saveKey = () => withBusy('key', async () => {
+    const response = await callZernioApi<ProfileResponse>({ action: 'save_key', apiKey });
+    setApiKey('');
+    setProfiles(response.profiles ?? []);
+    await refreshStatus();
+    setNotice(t('Zernio key verified and stored securely.'));
+  });
+
+  const saveProfile = () => withBusy('profile', async () => {
+    await callZernioApi({ action: 'set_profile', profileId: selectedProfile });
+    await refreshStatus();
+    setNotice(t('Zernio profile saved.'));
+  });
+
+  const connectChannel = (channel: 'whatsapp' | 'instagram') => withBusy(channel, async () => {
+    const response = await callZernioApi<{ authUrl?: string }>({ action: 'connect_url', channel, profileId: selectedProfile });
+    if (!response.authUrl || !/^https:\/\//i.test(response.authUrl)) throw new Error(t('Zernio did not return a secure authorization link.'));
+    window.location.assign(response.authUrl);
+  });
+
+  const saveCountry = () => withBusy('country', async () => {
+    await callZernioApi({ action: 'set_country_code', countryCode });
+    await refreshStatus();
+    setNotice(t('Country calling code saved.'));
+  });
+
+  const refreshTemplates = () => withBusy('templates', async () => {
+    const response = await callZernioApi<TemplateResponse>({ action: 'list_templates' });
+    setTemplates(response.templates ?? []);
+    setMappings(response.mappings ?? []);
+    setNotice(t('WhatsApp templates refreshed.'));
+  });
+
+  const saveMapping = (eventType: EventType) => withBusy(eventType, async () => {
+    const [templateName, templateLanguage] = selection[eventType].split('::');
+    if (!templateName || !templateLanguage) throw new Error(t('Choose a WhatsApp template first.'));
+    const response = await callZernioApi<{ enabled: boolean }>({
+      action: 'save_notification_template',
+      eventType,
+      templateName,
+      templateLanguage,
+      enabled: enabled[eventType],
+    });
+    await refreshStatus();
+    if (enabled[eventType] && !response.enabled) {
+      setNotice(t('Template saved but not enabled. It must be approved and contain no variables.'));
+    } else {
+      setNotice(t('Notification template saved.'));
+    }
+  });
+
+  const retryNotification = (id: string) => withBusy('retry:' + id, async () => {
+    await callZernioApi({ action: 'retry_notification', outboxId: id });
+    await refreshStatus();
+    setNotice(t('Notification queued for a safe retry.'));
+  });
+
+  const createTemplate = () => withBusy('template-create', async () => {
+    await callZernioApi({
+      action: 'create_template',
+      templateName: newTemplateName,
+      templateLanguage: newTemplateLanguage,
+      category: newTemplateCategory,
+      bodyText: newTemplateBody,
+    });
+    setNewTemplateName('');
+    setNewTemplateBody('');
+    await refreshStatus();
+    setNotice(t('Template created and submitted for Meta review.'));
+  });
+
+  const beginEditTemplate = (template: ZernioTemplate) => {
+    const body = simpleTemplateBody(template);
+    if (body === null) {
+      setError(t('Only simple text-only templates without variables can be edited here.'));
+      return;
+    }
+    setError('');
+    setEditingTemplateKey(template.name + '::' + template.language);
+    setEditingTemplateBody(body);
+  };
+
+  const saveTemplateEdit = (template: ZernioTemplate) => withBusy('template-edit', async () => {
+    await callZernioApi({
+      action: 'update_template',
+      templateName: template.name,
+      templateLanguage: template.language,
+      bodyText: editingTemplateBody,
+    });
+    setEditingTemplateKey('');
+    setEditingTemplateBody('');
+    await refreshStatus();
+    setNotice(t('Template updated and submitted for Meta review. Its notification mapping is disabled until approval.'));
+  });
+
+  const deleteTemplate = (template: ZernioTemplate) => {
+    if (!window.confirm(t('Delete this exact language variant from WhatsApp? Meta may keep it pending deletion for a while.'))) return;
+    void withBusy('template-delete', async () => {
+      await callZernioApi({ action: 'delete_template', templateName: template.name, templateLanguage: template.language });
+      setEditingTemplateKey('');
+      await refreshStatus();
+      setNotice(t('Template deletion was requested from Meta.'));
+    });
+  };
+
+  const templatesByKey = new Map<string, ZernioTemplate>(templates.map((template): [string, ZernioTemplate] => [template.name + '::' + template.language, template]));
+
+  return (
+    <section className="space-y-5">
+      <div className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+        <h2 className="text-lg font-semibold">{t('Messaging integrations')}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{t('Connect Zernio securely to configure WhatsApp loyalty notifications and an Instagram professional account.')}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t('API credentials are encrypted on the server. Only the owner can manage these settings.')}</p>
+        {error && <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{t(error)}</p>}
+        {notice && <p role="status" className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="space-y-1.5">
+            <Label htmlFor="zernio-api-key">{t(integration?.hasZernioKey ? 'Replace Zernio API key' : 'Zernio API key')}</Label>
+            <Input
+              id="zernio-api-key"
+              type="password"
+              autoComplete="new-password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              placeholder="sk_••••••••••••"
+              maxLength={128}
+              className="h-11"
+            />
+          </div>
+          <div className="flex items-end">
+            <Button type="button" onClick={saveKey} disabled={busy !== '' || apiKey.trim().length < 10} className="w-full gap-2 sm:w-auto">
+              {busy === 'key' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {t('Verify and save key')}
+            </Button>
+          </div>
+        </div>
+
+        {integration?.hasZernioKey && (
+          <div className="mt-5 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="space-y-1.5">
+              <Label htmlFor="zernio-profile">{t('Zernio profile')}</Label>
+              <select id="zernio-profile" value={selectedProfile} onChange={(event) => setSelectedProfile(event.target.value)} className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm">
+                <option value="">{t('Choose a profile')}</option>
+                {profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name} · {profile.id}</option>)}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button type="button" variant="outline" onClick={saveProfile} disabled={!selectedProfile || selectedProfile === integration.zernio_profile_id || busy !== ''} className="w-full sm:w-auto">
+                {t('Save profile')}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {integration?.zernio_profile_id && (
+          <div className="mt-6 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-xl border p-4">
+              <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('WhatsApp Business')}</div>
+              <p className="mt-1 break-all text-sm text-muted-foreground">{integration.whatsapp_display_name || integration.whatsapp_account_id || t('Not connected')}</p>
+              <Button type="button" onClick={() => void connectChannel('whatsapp')} disabled={busy !== ''} className="mt-4 w-full">
+                {integration.whatsapp_account_id ? t('Reconnect WhatsApp') : t('Connect WhatsApp')}
+              </Button>
+            </div>
+            <div className="rounded-xl border p-4">
+              <div className="flex items-center gap-2 font-medium"><MessageCircle className="h-4 w-4" />{t('Instagram professional account')}</div>
+              <p className="mt-1 break-all text-sm text-muted-foreground">{integration.instagram_username || integration.instagram_account_id || t('Not connected')}</p>
+              <Button type="button" variant="outline" onClick={() => void connectChannel('instagram')} disabled={busy !== ''} className="mt-4 w-full">
+                {integration.instagram_account_id ? t('Reconnect Instagram') : t('Connect Instagram')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {integration?.whatsapp_account_id && (
+        <>
+          <div className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="font-semibold">{t('WhatsApp notification templates')}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{t('Only approved templates without variables can be enabled for automatic notifications in this first version.')}</p>
+              </div>
+              <Button type="button" variant="outline" onClick={refreshTemplates} disabled={busy !== ''} className="gap-2">
+                {busy === 'templates' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {t('Refresh templates')}
+              </Button>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="space-y-1.5">
+                <Label htmlFor="phone-country-code">{t('Customer phone country code')}</Label>
+                <Input id="phone-country-code" inputMode="numeric" value={countryCode} onChange={(event) => setCountryCode(event.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="55" className="h-10 w-full sm:max-w-40" />
+              </div>
+              <div className="flex items-end"><Button type="button" variant="outline" onClick={saveCountry} disabled={busy !== '' || !countryCode} className="w-full sm:w-auto">{t('Save')}</Button></div>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">{t('Numbers with 12 to 15 digits beginning with this calling code are kept; local 10 or 11 digit numbers use this prefix.')}</p>
+          </div>
+
+          {EVENTS.map((event) => {
+            const currentKey = selection[event.id];
+            const selectedTemplate = templatesByKey.get(currentKey);
+            return (
+              <div key={event.id} className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="font-semibold">{t(event.label)}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{t(event.description)}</p>
+                  </div>
+                  {mappings.find((mapping) => mapping.event_type === event.id)?.enabled && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800"><Check className="h-3.5 w-3.5" />{t('Enabled')}</span>}
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="space-y-1.5">
+                    <Label htmlFor={'template-' + event.id}>{t('WhatsApp template')}</Label>
+                    <select
+                      id={'template-' + event.id}
+                      value={currentKey}
+                      onChange={(inputEvent) => setSelection((current) => ({ ...current, [event.id]: inputEvent.target.value }))}
+                      className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    >
+                      <option value="">{t('Choose a template')}</option>
+                      {templates.map((template) => <option key={template.name + '::' + template.language} value={template.name + '::' + template.language}>{template.name} · {template.language} · {template.status}{template.parameterCount ? ' · ' + template.parameterCount + ' ' + t('variables') : ''}</option>)}
+                    </select>
+                    {selectedTemplate && <p className="text-xs text-muted-foreground">{t('Template status')}: {selectedTemplate.status}. {selectedTemplate.parameterCount ? t('Templates with variables are not sent in this version.') : ''}</p>}
+                  </div>
+                  <div className="flex items-end">
+                    <Button type="button" onClick={() => void saveMapping(event.id)} disabled={!currentKey || busy !== ''} className="w-full gap-2 sm:w-auto">
+                      {busy === event.id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      {t('Save template')}
+                    </Button>
+                  </div>
+                </div>
+                <label className="mt-3 inline-flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={enabled[event.id]}
+                    onChange={(inputEvent) => setEnabled((current) => ({ ...current, [event.id]: inputEvent.target.checked }))}
+                    disabled={!selectedTemplate || selectedTemplate.status !== 'APPROVED' || selectedTemplate.parameterCount !== 0}
+                    className="mt-1 h-4 w-4 accent-foreground"
+                  />
+                  <span>{t('Enable automatic message for this event (requires an approved template with no variables).')}</span>
+                </label>
+              </div>
+            );
+          })}
+
+          <div className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+            <h3 className="font-semibold">{t('Manage WhatsApp templates')}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t('New and edited templates must pass Meta review. Editing disables the related notification until approval.')}</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-template-name">{t('Template name')}</Label>
+                <Input id="new-template-name" value={newTemplateName} onChange={(event) => setNewTemplateName(event.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))} maxLength={512} placeholder="loyalty_visit" className="h-10" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-template-language">{t('Language code')}</Label>
+                  <Input id="new-template-language" value={newTemplateLanguage} onChange={(event) => setNewTemplateLanguage(event.target.value)} maxLength={8} placeholder="pt_BR" className="h-10" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="new-template-category">{t('Category')}</Label>
+                  <select id="new-template-category" value={newTemplateCategory} onChange={(event) => setNewTemplateCategory(event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                    <option value="UTILITY">{t('Utility')}</option>
+                    <option value="MARKETING">{t('Marketing')}</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="new-template-body">{t('Message text')}</Label>
+                <textarea id="new-template-body" value={newTemplateBody} onChange={(event) => setNewTemplateBody(event.target.value)} maxLength={1024} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" placeholder={t('Write a message without variables.')} />
+                <p className="text-xs text-muted-foreground">{t('Simple text-only templates without variables are supported here.')}</p>
+              </div>
+              <div className="md:col-span-2">
+                <Button type="button" onClick={createTemplate} disabled={busy !== '' || !newTemplateName.trim() || !newTemplateLanguage.trim() || !newTemplateBody.trim()} className="w-full gap-2 sm:w-auto">
+                  {busy === 'template-create' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {t('Create template')}
+                </Button>
+              </div>
+            </div>
+            {templates.length > 0 && (
+              <ul className="mt-5 divide-y rounded-xl border">
+                {templates.map((template) => {
+                  const key = template.name + '::' + template.language;
+                  const editable = simpleTemplateBody(template) !== null && ['APPROVED', 'REJECTED', 'PAUSED'].includes(template.status);
+                  return (
+                    <li key={key} className="p-3 sm:p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="break-all text-sm font-medium">{template.name} · {template.language}</p>
+                          <p className="text-xs text-muted-foreground">{t(template.category || 'Template')} · {template.status}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button type="button" variant="outline" size="sm" disabled={!editable || busy !== ''} onClick={() => beginEditTemplate(template)} className="flex-1 gap-2 sm:flex-none">
+                            <Pencil className="h-3.5 w-3.5" />{t('Edit')}
+                          </Button>
+                          <Button type="button" variant="outline" size="sm" disabled={busy !== ''} onClick={() => deleteTemplate(template)} className="flex-1 gap-2 sm:flex-none">
+                            <Trash2 className="h-3.5 w-3.5" />{t('Delete')}
+                          </Button>
+                        </div>
+                      </div>
+                      {editingTemplateKey === key && (
+                        <div className="mt-3 space-y-2">
+                          <Label htmlFor={'edit-template-' + key}>{t('Message text')}</Label>
+                          <textarea id={'edit-template-' + key} value={editingTemplateBody} onChange={(event) => setEditingTemplateBody(event.target.value)} maxLength={1024} rows={3} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button type="button" onClick={() => saveTemplateEdit(template)} disabled={busy !== '' || !editingTemplateBody.trim()} className="gap-2"><Save className="h-4 w-4" />{t('Save and submit for review')}</Button>
+                            <Button type="button" variant="outline" onClick={() => setEditingTemplateKey('')} disabled={busy !== ''}>{t('Cancel')}</Button>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-2xl border bg-white p-4 shadow-xs sm:p-6">
+            <h3 className="font-semibold">{t('Communication history')}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{t('Recent WhatsApp notification attempts for this business.')}</p>
+            {notifications.length === 0 ? (
+              <p className="mt-4 text-sm text-muted-foreground">{t('No notifications have been queued yet.')}</p>
+            ) : (
+              <ul className="mt-4 divide-y">
+                {notifications.map((notification) => {
+                  const history = notificationAttempts.filter((attempt) => attempt.outbox_id === notification.id);
+                  const lastAttempt = history[0];
+                  return (
+                    <li key={notification.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">{t(EVENTS.find((event) => event.id === notification.event_type)?.label ?? notification.event_type)} · {t(notification.status)}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(notification.created_at).toLocaleString()} · {t('Attempts')}: {history.length}{lastAttempt?.error_code ? ' · ' + lastAttempt.error_code : notification.last_error_code ? ' · ' + notification.last_error_code : ''}</p>
+                      </div>
+                      {notification.status === 'failed' && (
+                        <Button type="button" variant="outline" size="sm" onClick={() => void retryNotification(notification.id)} disabled={busy !== ''} className="w-full sm:w-auto">
+                          {busy === 'retry:' + notification.id ? t('Updating…') : t('Try again')}
+                        </Button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
+};

@@ -4,7 +4,7 @@
 
 Adicionar ao Stampfy um módulo para cada comércio publicar e administrar um site institucional local, com páginas públicas, catálogo de produtos e serviços e ferramentas básicas de SEO. O módulo deve complementar campanhas, cartões e fidelidade sem transformar recompensas de fidelidade em produtos à venda.
 
-Este documento registra o escopo e o andamento da implementação. A primeira entrega está no código do repositório; ela ainda depende da aplicação da migration no Supabase e de validação no deploy. A publicação não garante indexação ou posicionamento em mecanismos de busca.
+Este documento registra o escopo e o andamento da implementação. O MVP está implementado no repositório, incluindo edição assistida, uploads, páginas públicas e formulário com caixa de entrada de leads. A ativação em produção ainda depende das migrations incrementais, da configuração do Vercel e de validação real. A publicação não garante indexação ou posicionamento em mecanismos de busca.
 
 ## Contexto e decisões iniciais
 
@@ -22,9 +22,13 @@ Antes de publicar a primeira versão:
 
 - Aplicar `supabase/legacy-patches/add_business_sites.sql` no projeto Supabase vinculado. O patch é aditivo; não executar `migration.sql` sobre uma base existente.
 - Configurar no Vercel `SUPABASE_URL` e `SUPABASE_ANON_KEY` para as funções públicas. A chave anon/public é suficiente porque as funções retornam somente conteúdo publicado e habilitado; nunca configurar a chave service role nestas rotas.
+- Para receber formulários, configurar `SUPABASE_SERVICE_ROLE_KEY` como variável **server-only** no Vercel, sem prefixo `VITE_`. `api/business-site-lead.ts` a usa somente no servidor para chamar uma RPC restrita; a chave não deve entrar no bundle do navegador nem em logs.
+- Aplicar também `supabase/legacy-patches/add_business_site_leads.sql`. O patch é aditivo e cria a caixa de entrada privada, limite anti-spam e RPCs do formulário.
 - Configurar `APP_ORIGIN` com a origem pública canônica, por exemplo `https://stampee.co`. Sem essa variável, as funções usam a origem da requisição recebida.
 - Configurar `SITE_ORIGIN` ou `VITE_APP_URL` no build para que o sitemap estático geral use o domínio correto. `robots.txt` referencia o sitemap geral e `/sites-sitemap.xml`.
 - Confirmar que as funções Vercel em `api/` e os rewrites de `/empresa/{slug}` e `/sites-sitemap.xml` estão ativos no deploy.
+
+As funções em `api/` não são executadas pelo servidor Vite padrão (`npm run dev`). Para validar localmente as rotas server-side e os rewrites, usar `npm run dev:vercel` com as variáveis server-only configuradas no ambiente local.
 
 O HTML público é montado nas funções Vercel a partir da RPC pública do Supabase. O preview e a administração usam RPCs autenticadas; nenhuma tabela do módulo recebe acesso direto do navegador.
 
@@ -39,7 +43,9 @@ Adicionar a seção **Site** à navegação do proprietário, respeitando o sist
 - **SEO e presença local:** metadados, endereço ou área atendida, telefone, horários e links oficiais.
 - **Domínios:** endereço Stampfy e, quando implementado, domínio próprio.
 
-Oferecer uma configuração assistida com salvamento de progresso: dados da empresa; segmento e público; produtos/serviços e localidade; identidade visual; conteúdo; SEO; pré-visualização e publicação.
+Oferecer uma configuração assistida com salvamento de progresso: dados da empresa; segmento e público; produtos/serviços e localidade; identidade visual; conteúdo; SEO; pré-visualização e publicação. O roteiro atual navega até as seções do editor, mostra progresso calculado com os dados do rascunho e salva pelo fluxo existente.
+
+O upload de logo, capa e imagens do diretório reutiliza o bucket `campaign-assets`, com validação de tipo e tamanho e prefixo por proprietário. A edição livre de blocos reordenáveis não faz parte do editor atual.
 
 ## Site público e conteúdo
 
@@ -103,7 +109,7 @@ Para domínio próprio, validar propriedade antes de associá-lo, verificar host
 
 ## Contatos, leads e privacidade
 
-Oferecer links para WhatsApp, telefone e e-mail e formulários configuráveis. Validar e limitar envios, prevenir spam, registrar o lead no tenant correto e pedir consentimento quando necessário. Definir retenção, acesso e exclusão conforme a LGPD.
+Oferecer links para WhatsApp, telefone e e-mail e formulário público de contato. O formulário valida campos, exige consentimento, inclui honeypot e limita cinco envios por IP e comércio a cada dez minutos. A RPC resolve o tenant pelo slug publicado; o proprietário ativo consulta e atualiza o estado dos leads por RPC autenticada. A tela lista até 200 registros recentes. A tabela registra o horário do consentimento; retenção, exclusão e rotina de limpeza de leads devem ser definidas antes de ampliar o período de armazenamento.
 
 Integrações com CRM, analytics ou webhooks devem reutilizar serviços existentes quando disponíveis. Webhooks futuros devem ser assinados, idempotentes e ter retries auditáveis. Não criar métricas estimadas e apresentá-las como dados observados.
 
@@ -126,18 +132,18 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 
 - [x] Criar tabelas aditivas de configuração do site e histórico de revisões, ligadas ao proprietário.
 - [~] Restringir acesso às tabelas e validar o proprietário ativo nas RPCs; a migration ainda precisa ser aplicada e validada no projeto Supabase.
-- [~] Modelar rascunho, publicação, preview e revisão; ainda falta auditoria detalhada por ação e política de uploads.
+- [~] Modelar rascunho, publicação, preview e revisão. Uploads reutilizam o bucket existente com política de acesso por proprietário; auditoria detalhada por ação continua pendente.
 
 ### Fase 2 — Administração e template [~]
 
 - [x] Adicionar menu Site e estado de publicação, URL e última publicação.
-- [ ] Criar fluxo assistido com salvamento do progresso.
-- [~] Implementar editor responsivo de conteúdo, páginas e itens; o editor completo de blocos e upload de mídia ficam pendentes.
+- [x] Criar fluxo assistido com indicador e salvamento do progresso do rascunho.
+- [~] Implementar editor responsivo de conteúdo, páginas e itens e upload de logo/capa/imagens; edição livre de blocos reordenáveis continua pendente.
 - [x] Implementar o primeiro template institucional com navegação, rodapé e layout responsivo.
 
 ### Fase 3 — Páginas públicas e diretório [~]
 
-- [~] Renderizar Home, Sobre, Contato, páginas configuráveis e 404; conteúdo de FAQ e política de privacidade precisa ser preenchido antes de ativar essas páginas.
+- [x] Renderizar Home, Sobre, Contato, páginas configuráveis, catálogo e 404; a interface impede ativar FAQ e política de privacidade sem conteúdo.
 - [x] Cadastrar categorias, produtos e serviços com páginas individuais.
 - [x] Criar navegação e links entre páginas, categorias e itens.
 - [x] Permitir destacar produtos e serviços na Home e em landing pages.
@@ -157,10 +163,10 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 - [~] Incluir campos de presença local e layout responsivo; upload otimizado, srcset, auditoria de acessibilidade e medição de performance ficam pendentes.
 - [x] Evitar aliases públicos duplicados para diretório e itens.
 
-### Fase 6 — Conversão e integrações [ ]
+### Fase 6 — Conversão e integrações [~]
 
-- [ ] Criar CTAs e formulários com consentimento, anti-spam, rate limit e isolamento.
-- [ ] Integrar leads aos serviços internos ou preparar webhooks seguros.
+- [x] Criar CTAs e formulário com consentimento explícito, honeypot, limite de envios no banco e isolamento por tenant.
+- [x] Integrar leads à caixa de entrada do proprietário, com atualização de estado por RPC autenticada.
 - [ ] Integrar Search Console, Bing Webmaster ou analytics somente com autenticação e consentimentos necessários.
 - [ ] Exibir métricas apenas quando houver mensuração configurada.
 
@@ -169,7 +175,7 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 - [ ] Validar isolamento com ao menos dois tenants e suas equipes.
 - [ ] Validar páginas, HTML inicial, metadados, canonical, JSON-LD, sitemap e robots.
 - [ ] Validar publicação no domínio correto, rollback e captação de leads.
-- [~] Documentar configuração, limites e bloqueios; testes de integração, browser e produção continuam pendentes.
+- [~] Documentar configuração, limites e bloqueios. Aplicação dos patches `add_business_sites.sql` e `add_business_site_leads.sql`, configuração do Vercel e validação em produção continuam pendentes.
 
 ## Critérios de aceite
 
@@ -192,4 +198,4 @@ Na fase de implementação, planejar testes unitários, integração e E2E para 
 - [Vercel: Node.js Functions](https://vercel.com/docs/functions/runtimes/node-js)
 - [Vercel: rewrites](https://vercel.com/docs/routing/rewrites)
 - [Diretrizes atuais do Google para ranking local](https://support.google.com/business/answer/7091?hl=pt-BR)
-- [Plano geral do Stampfy](../@TASK.md)
+- [Plano geral do Stampfy](../TASK.md)
