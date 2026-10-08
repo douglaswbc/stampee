@@ -19,6 +19,8 @@ export interface CustomerPortalBusiness {
   customerName: string;
   hasMobile: boolean;
   whatsappLoyaltyEnabled: boolean;
+  pushLoyaltyEnabled: boolean;
+  hasPushSubscription: boolean;
   cards: CustomerPortalCard[];
   pointsBalance: number;
   pointsHistory: Array<{ delta: number; description: string; createdAt: string }>;
@@ -55,11 +57,27 @@ export async function initializeCustomerPortal(): Promise<{ ok: true } | { ok: f
 }
 
 export async function fetchCustomerPortalData(): Promise<CustomerPortalData | null> {
-  const { data, error } = await supabase.rpc('get_customer_portal_data');
+  const [{ data, error }, { data: pushData }] = await Promise.all([
+    supabase.rpc('get_customer_portal_data'),
+    supabase.rpc('get_customer_portal_push_preferences'),
+  ]);
   if (error || !data || typeof data !== 'object') return null;
   const payload = data as Partial<CustomerPortalData>;
   if (typeof payload.email !== 'string' || !Array.isArray(payload.businesses)) return null;
-  return payload as CustomerPortalData;
+  const pushPreferences = Array.isArray(pushData) ? pushData as Array<{
+    ownerId?: unknown; customerId?: unknown; enabled?: unknown; hasSubscription?: unknown;
+  }> : [];
+  const pushByCustomer = new Map(pushPreferences.map(preference => [
+    `${String(preference.ownerId)}:${String(preference.customerId)}`,
+    { enabled: preference.enabled === true, hasSubscription: preference.hasSubscription === true },
+  ]));
+  return {
+    ...(payload as CustomerPortalData),
+    businesses: payload.businesses.map(business => {
+      const push = pushByCustomer.get(`${business.ownerId}:${business.customerId}`);
+      return { ...business, pushLoyaltyEnabled: push?.enabled ?? false, hasPushSubscription: push?.hasSubscription ?? false };
+    }),
+  };
 }
 
 export async function claimCustomerPortalRecordsByEmail(): Promise<number | null> {
@@ -83,6 +101,19 @@ export async function setCustomerPortalWhatsAppPreference(
   enabled: boolean
 ): Promise<boolean> {
   const { data, error } = await supabase.rpc('set_customer_portal_whatsapp_preference', {
+    owner_id_input: ownerId,
+    customer_id_input: customerId,
+    enabled_input: enabled,
+  });
+  return !error && data === true;
+}
+
+export async function setCustomerPortalPushPreference(
+  ownerId: string,
+  customerId: string,
+  enabled: boolean,
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc('set_customer_portal_push_preference', {
     owner_id_input: ownerId,
     customer_id_input: customerId,
     enabled_input: enabled,

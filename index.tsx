@@ -21,13 +21,16 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload();
 });
 
-// Ensure no stale service worker is serving cached assets.
+// Keep the app installable. The worker caches only static assets and the generic
+// HTML shell; API responses and customer-specific routes are always network-only.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => registration.unregister());
-  }).catch(() => {
-    // No-op: failure to unregister should not break app startup.
-  });
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+      .then((registration) => registration.update())
+      .catch(() => {
+        // A service worker is an enhancement; it must not block the web app.
+      });
+  }, { once: true });
 }
 
 const rootElement = document.getElementById('root');

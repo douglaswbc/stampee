@@ -12,6 +12,7 @@ import {
   claimCustomerPortalRecordsByEmail,
   fetchCustomerPortalData,
   initializeCustomerPortal,
+  setCustomerPortalPushPreference,
   setCustomerPortalWhatsAppPreference,
   unlinkCustomerPortalBusiness,
 } from '../lib/db/customerPortal';
@@ -179,8 +180,25 @@ const CustomerAccountPage: React.FC = () => {
     setBusyPreference(null);
   };
 
+  const togglePush = async (business: CustomerPortalBusiness, enabled: boolean) => {
+    const key = `${business.ownerId}:${business.customerId}`;
+    setBusyPreference(key);
+    setError('');
+    setNotice('');
+    const saved = await setCustomerPortalPushPreference(business.ownerId, business.customerId, enabled);
+    if (!saved) {
+      setError(enabled
+        ? t('Activate push from this business card on a device first.')
+        : t('We could not update this preference. Please try again.'));
+    } else {
+      setNotice(t('Notification preference saved.'));
+      await refreshPortal();
+    }
+    setBusyPreference(null);
+  };
+
   const unlinkBusiness = async (business: CustomerPortalBusiness) => {
-    const confirmed = window.confirm(t('Remove this business from your Stampfy account? Its records will stay with the business, and WhatsApp loyalty updates for this customer record will be turned off.'));
+    const confirmed = window.confirm(t('Remove this business from your Stampfy account? Its records will stay with the business, and WhatsApp and push loyalty updates for this customer record will be turned off.'));
     if (!confirmed) return;
     const key = `${business.ownerId}:${business.customerId}`;
     setBusyUnlink(key);
@@ -291,6 +309,7 @@ const CustomerAccountPage: React.FC = () => {
               busyPreference={busyPreference === `${business.ownerId}:${business.customerId}`}
               busyUnlink={busyUnlink === `${business.ownerId}:${business.customerId}`}
               onWhatsAppChange={enabled => void toggleWhatsApp(business, enabled)}
+              onPushChange={enabled => void togglePush(business, enabled)}
               onUnlink={() => void unlinkBusiness(business)}
             />)}
           </div>
@@ -315,8 +334,9 @@ const BusinessHistoryCard: React.FC<{
   busyPreference: boolean;
   busyUnlink: boolean;
   onWhatsAppChange: (enabled: boolean) => void;
+  onPushChange: (enabled: boolean) => void;
   onUnlink: () => void;
-}> = ({ business, locale, t, busyPreference, busyUnlink, onWhatsAppChange, onUnlink }) => (
+}> = ({ business, locale, t, busyPreference, busyUnlink, onWhatsAppChange, onPushChange, onUnlink }) => (
   <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-subtle">
     <header className="flex flex-col gap-3 border-b border-border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
       <div><h3 className="text-lg font-bold text-foreground">{business.businessName}</h3><p className="mt-0.5 text-sm text-muted-foreground">{business.customerName}</p></div>
@@ -348,6 +368,10 @@ const BusinessHistoryCard: React.FC<{
           <label className={`mt-3 flex items-start justify-between gap-3 ${business.hasMobile || business.whatsappLoyaltyEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
             <span><span className="block text-sm font-medium text-foreground">{t('WhatsApp loyalty updates')}</span><span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{business.hasMobile ? t('Allow this business to send updates about visits, missions, and rewards on WhatsApp.') : business.whatsappLoyaltyEnabled ? t('You can turn off WhatsApp updates even if this business no longer has your mobile number.') : t('Add a mobile number with this business before enabling WhatsApp updates.')}</span></span>
             <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={business.whatsappLoyaltyEnabled} disabled={(!business.hasMobile && !business.whatsappLoyaltyEnabled) || busyPreference} onChange={event => onWhatsAppChange(event.target.checked)} aria-label={t('WhatsApp loyalty updates')} />
+          </label>
+          <label className={`mt-3 flex items-start justify-between gap-3 ${business.hasPushSubscription || business.pushLoyaltyEnabled ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}>
+            <span><span className="block text-sm font-medium text-foreground">{t('Browser loyalty updates')}</span><span className="mt-0.5 block text-xs leading-5 text-muted-foreground">{business.hasPushSubscription ? t('Allow this business to send visit, mission, and reward updates as browser notifications.') : business.pushLoyaltyEnabled ? t('No active browser subscription is linked now. Open a card on a device to enable it again.') : t('Open a card from this business on the device where you want to receive notifications.')}</span></span>
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={business.pushLoyaltyEnabled} disabled={(!business.hasPushSubscription && !business.pushLoyaltyEnabled) || busyPreference} onChange={event => onPushChange(event.target.checked)} aria-label={t('Browser loyalty updates')} />
           </label>
           <Button type="button" variant="ghost" size="sm" onClick={onUnlink} disabled={busyUnlink || busyPreference} className="mt-3 gap-2 px-0 text-destructive hover:bg-transparent hover:text-destructive"><Unlink size={14} />{busyUnlink ? t('Removing...') : t('Remove this business from my account')}</Button>
         </div>

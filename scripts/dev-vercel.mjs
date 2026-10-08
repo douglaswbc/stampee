@@ -11,6 +11,11 @@ const serverEnvNames = [
   'APP_ORIGIN',
   'ZERNIO_ENCRYPTION_KEY',
   'COMMUNICATIONS_CRON_SECRET',
+  'CRON_SECRET',
+  'PUSH_CRON_SECRET',
+  'WEB_PUSH_PUBLIC_KEY',
+  'WEB_PUSH_PRIVATE_KEY',
+  'WEB_PUSH_SUBJECT',
 ];
 for (const name of serverEnvNames) {
   if (!process.env[name]?.trim() && localEnv[name] !== undefined) {

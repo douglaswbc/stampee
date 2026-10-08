@@ -18,6 +18,7 @@ import { parseCustomerLoyaltyPoints } from './lib/db/loyaltyPoints';
 import { PublicLoyaltyPoints } from './components/PublicLoyaltyPoints';
 import { PublicLoyaltyRewards } from './components/PublicLoyaltyRewards';
 import { PublicNotificationPreferences } from './components/PublicNotificationPreferences';
+import { PublicPushNotifications } from './components/PublicPushNotifications';
 import { CustomerAccountInvitation } from './components/CustomerAccountInvitation';
 import { fetchPublicScanEntryContext } from './lib/db/issuedCards';
 import { buildCampaignSignupUrl, buildIssuedCardsKioskUrl, buildStaffPortalUrl, buildStaffScanEntryUrl } from './lib/links';
@@ -372,6 +373,7 @@ const PublicCardWrapper: React.FC = () => {
       </div>
       <PublicLoyaltyPoints summary={loyaltyPoints} referralUrl={referralUrl} />
       <PublicNotificationPreferences slug={slug ?? ''} cardUniqueId={card.uniqueId} />
+      <PublicPushNotifications slug={slug ?? ''} cardUniqueId={card.uniqueId} />
       <CustomerAccountInvitation />
       <PublicLoyaltyRewards slug={slug ?? ''} cardUniqueId={card.uniqueId} onPointsRefresh={refreshLoyaltyPoints} />
       {withSuspense(<MissionProgressList missions={missions} timeZone={timeZone} />)}

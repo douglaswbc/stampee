@@ -185,20 +185,19 @@ O primeiro recorte está implementado no repositório: a rota `/account` usa lin
 
 **Para validar a primeira versão:** aplicar `supabase/legacy-patches/add_customer_portal.sql` no projeto vinculado; confirmar nas configurações do Supabase Auth que os domínios local e de produção estão autorizados para o redirect `/account`; confirmar que o modelo de e-mail envia o link de acesso; testar vinculação por e-mail verificado e por link de cartão, contas sem cartões, cartão já vinculado a outra conta, revogação WhatsApp e isolamento entre duas contas.
 
-### Fase 6 — Base PWA e notificações push [ ]
+### Fase 6 — Base PWA e notificações push [~]
 
 Preparar o Stampfy para instalar como PWA e receber notificações Web Push em dispositivos/navegadores compatíveis. A instalação não deve ser obrigatória para entrar em campanhas. Web Push depende de permissão explícita e de uma inscrição por navegador/dispositivo; no iOS/iPadOS, requer que o web app seja adicionado à Tela de Início em versões compatíveis. A entrega não é garantida pelo sistema operacional ou pelo navegador.
 
-- [ ] Implementar e validar manifesto, ícones, HTTPS, `service worker`, comportamento de atualização e experiência de instalação; definir o mínimo de funcionamento offline sem prometer ações de fidelidade offline que não possam ser validadas no servidor.
-- [ ] Detectar suporte e estado de permissão antes de oferecer ativação; explicar o benefício e solicitar permissão somente após ação explícita do cliente, sem exibir o prompt automaticamente ao abrir a página.
-- [ ] Permitir ativar push com uma ação clara (por exemplo, “Receber atualizações”), informar quando a instalação na Tela de Início é necessária e manter acesso às campanhas mesmo se o cliente recusar.
-- [ ] Salvar inscrição por dispositivo/navegador e associá-la à identidade verificada quando existir. Para cliente sem conta, definir um vínculo limitado e seguro à participação corrente, permitindo associar a inscrição mais tarde sem tratar o token push como identidade ou prova de posse.
-- [ ] Criar armazenamento protegido para endpoint e chaves da inscrição, com acesso somente pelo servidor, unicidade/idempotência, registro de consentimento, revogação e limpeza de inscrições inválidas ou expiradas.
-- [ ] Enviar push somente por serviço server-side com chaves VAPID em segredo de servidor; o `service worker` deve exibir uma notificação visível e abrir a campanha/cartão correto ao toque.
-- [ ] Tratar falhas, tentativas, endpoints expirados e cancelamento da inscrição sem duplicar eventos de fidelidade. Nunca enviar push apenas com base em permissão do navegador se a preferência da categoria/empresa estiver desativada.
+- [~] Implementar manifesto, ícone, HTTPS, `service worker`, atualização e instalação opcional; o fallback offline informa que ações de fidelidade exigem conexão. Falta validar em dispositivos reais.
+- [x] Detectar suporte e permissão; o prompt de navegador só é solicitado após clique explícito no cartão.
+- [x] Oferecer ativação opcional no cartão, instruções para Tela de Início no iOS/iPadOS e manter o cartão disponível sem consentimento push.
+- [x] Salvar a inscrição do dispositivo vinculada ao cartão aberto pelo link recebido; eventos de outro cartão não usam essa inscrição. Quando uma identidade reivindica o mesmo cadastro, as preferências permanecem ligadas ao cliente e à empresa.
+- [~] Criar tabelas privadas, RPCs de inscrição/revogação e auditoria de consentimento no patch `supabase/legacy-patches/add_customer_web_push.sql`; ainda falta aplicar o patch e validar isolamento no Supabase.
+- [~] Criar worker server-side VAPID, fila independente do WhatsApp, revalidação do consentimento, tentativas e limpeza de endpoints expirados; falta configurar segredos/agendador e validar envio real.
 - [ ] Testar em Android/Chrome, desktop compatível, iOS/iPadOS com web app na Tela de Início e cenários sem suporte, permissão negada, permissão revogada, troca de dispositivo e atualização do service worker.
 
-**Critérios de aceite:** instalação é opcional; nenhum prompt aparece sem contexto e gesto do cliente; inscrição pode ser revogada; push enviado pelo servidor abre a rota correta; consentimento por empresa/categoria é respeitado; falhas de entrega não bloqueiam cartões, missões ou recompensas.
+**Critérios de aceite:** [~] instalação é opcional; o prompt só aparece após ação no cartão; inscrições podem ser revogadas; o worker abre o cartão correto e respeita o consentimento por empresa/categoria. Migration, secrets, agendamento e validação dos dispositivos ainda pendentes. Detalhes operacionais em [docs/web-push.md](docs/web-push.md).
 
 ### Fase 7 — Lembretes automáticos e controles para empresas [ ]
 
