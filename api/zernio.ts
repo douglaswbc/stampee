@@ -169,6 +169,25 @@ const providerRequest = async (apiKey: string, path: string, init: RequestInit =
   }
 };
 
+const disconnectProviderAccount = async (apiKey: string, accountId: string) => {
+  let response: Response;
+  try {
+    response = await timeoutFetch(ZERNIO_BASE + '/accounts/' + encodeURIComponent(accountId), {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + apiKey },
+    });
+  } catch {
+    throw new ApiFailure('Zernio is temporarily unavailable. Try again.', 502);
+  }
+  // Zernio returns 404 when the account has already been disconnected.
+  if (response.ok || response.status === 404) return;
+  if (response.status === 401 || response.status === 403) {
+    throw new ApiFailure('Zernio rejected the stored API key or its permissions.', 400);
+  }
+  if (response.status === 429) throw new ApiFailure('Zernio rate limit reached. Try again shortly.', 429);
+  throw new ApiFailure('Could not disconnect the account from Zernio. Try again.', 502);
+};
+
 const listFrom = (value: unknown, keys: string[]) => {
   if (Array.isArray(value)) return value as Array<Record<string, unknown>>;
   if (!value || typeof value !== 'object') return [];
@@ -303,6 +322,104 @@ const handleAction = async (request: Request, body: Record<string, unknown>) => 
       instagram_username: null,
     });
     return respond({ profiles });
+  }
+
+  if (action === 'disconnect') {
+    const apiKey = await getProviderKey(integration);
+    const connectedAccounts = [
+      { channel: 'whatsapp', id: integration.whatsapp_account_id },
+      { channel: 'instagram', id: integration.instagram_account_id },
+    ].filter((account): account is { channel: 'whatsapp' | 'instagram'; id: string } => Boolean(account.id));
+    const disconnectedChannels: Array<'whatsapp' | 'instagram'> = [];
+
+    for (const account of connectedAccounts) {
+      try {
+        await disconnectProviderAccount(apiKey, account.id);
+        disconnectedChannels.push(account.channel);
+      } catch (error) {
+        if (disconnectedChannels.length) {
+          const partialPatch: Partial<IntegrationRow> = {};
+          if (disconnectedChannels.includes('whatsapp')) {
+            partialPatch.whatsapp_account_id = null;
+            partialPatch.whatsapp_display_name = null;
+          }
+          if (disconnectedChannels.includes('instagram')) {
+            partialPatch.instagram_account_id = null;
+            partialPatch.instagram_username = null;
+          }
+          await saveIntegration(ownerId, integration, partialPatch);
+          if (disconnectedChannels.includes('whatsapp')) {
+            await restRequest(
+              'company_notification_templates?owner_id=eq.' + encodeURIComponent(ownerId),
+              'PATCH',
+              { enabled: false, updated_at: new Date().toISOString() },
+            );
+            await restRequest(
+              'communication_notification_outbox?owner_id=eq.' + encodeURIComponent(ownerId) + '&status=eq.pending',
+              'PATCH',
+              { status: 'skipped', locked_at: null, last_error_code: 'integration_disconnected' },
+            );
+          }
+          throw new ApiFailure('Some accounts were disconnected, but another account could not be disconnected. Refresh settings and try again.', 502);
+        }
+        throw error;
+      }
+    }
+
+    await saveIntegration(ownerId, integration, {
+      zernio_api_key_ciphertext: null,
+      zernio_profile_id: null,
+      whatsapp_account_id: null,
+      whatsapp_display_name: null,
+      instagram_account_id: null,
+      instagram_username: null,
+    });
+    await restRequest(
+      'company_notification_templates?owner_id=eq.' + encodeURIComponent(ownerId),
+      'PATCH',
+      { enabled: false, updated_at: new Date().toISOString() },
+    );
+    await restRequest(
+      'communication_notification_outbox?owner_id=eq.' + encodeURIComponent(ownerId) + '&status=eq.pending',
+      'PATCH',
+      { status: 'skipped', locked_at: null, last_error_code: 'integration_disconnected' },
+    );
+    return respond({ ok: true });
+  }
+
+  if (action === 'disconnect_channel') {
+    const channel = body.channel === 'whatsapp' || body.channel === 'instagram' ? body.channel : null;
+    if (!channel) throw new ApiFailure('Choose a valid social account to disconnect.');
+
+    const accountId = channel === 'whatsapp' ? integration.whatsapp_account_id : integration.instagram_account_id;
+    if (!accountId) throw new ApiFailure('That social account is not connected.', 409);
+
+    const apiKey = await getProviderKey(integration);
+    await disconnectProviderAccount(apiKey, accountId);
+
+    if (channel === 'whatsapp') {
+      await saveIntegration(ownerId, integration, {
+        whatsapp_account_id: null,
+        whatsapp_display_name: null,
+      });
+      await restRequest(
+        'company_notification_templates?owner_id=eq.' + encodeURIComponent(ownerId),
+        'PATCH',
+        { enabled: false, updated_at: new Date().toISOString() },
+      );
+      await restRequest(
+        'communication_notification_outbox?owner_id=eq.' + encodeURIComponent(ownerId) + '&status=eq.pending',
+        'PATCH',
+        { status: 'skipped', locked_at: null, last_error_code: 'integration_disconnected' },
+      );
+    } else {
+      await saveIntegration(ownerId, integration, {
+        instagram_account_id: null,
+        instagram_username: null,
+      });
+    }
+
+    return respond({ ok: true, channel });
   }
 
   const apiKey = await getProviderKey(integration);

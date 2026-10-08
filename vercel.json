@@ -26,7 +26,7 @@
     },
     {
       "source": "/empresa/:slug/:path*",
-      "destination": "/api/public-site?slug=:slug&path=:path*"
+      "destination": "/api/public-site?slug=:slug&path=/:path*"
     },
     {
       "source": "/sites-sitemap.xml",
