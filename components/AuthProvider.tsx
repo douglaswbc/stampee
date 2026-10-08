@@ -139,6 +139,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadFullSession = useCallback(async (userId: string, authUser?: AuthUserLike) => {
     await waitForAuthUser(userId);
     setIsEmailVerified(Boolean(authUser?.email_confirmed_at));
+
+    // Customer portal identities are independent from business profiles. Their
+    // verified Supabase session must never be repaired into an owner account.
+    if (authUser?.user_metadata?.stampfy_account_type === "customer") {
+      setCurrentUser(null);
+      setCurrentOwner(null);
+      setStaffAccounts([]);
+      return;
+    }
+
     let profile = await fetchProfileWithRetry(userId);
     if (!profile && authUser) {
       const repaired = await createMissingProfile(authUser);

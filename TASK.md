@@ -163,3 +163,65 @@ Esses itens exigem decisão de produto e escopo próprios antes de implementaç�
 ## Módulo de sites institucionais
 
 O MVP do site por comércio está implementado no repositório: editor assistido, uploads, páginas públicas, catálogo, SEO básico, publicação e formulário/caixa de entrada de leads. O plano, configuração e pendências estão em [docs/sites-institucionais.md](docs/sites-institucionais.md). Para ativar em produção ainda é necessário aplicar `add_business_sites.sql` e `add_business_site_leads.sql`, configurar `SUPABASE_SERVICE_ROLE_KEY` server-only no Vercel e validar as rotas públicas. Domínio próprio, analytics/Search Console, auditoria detalhada e validação em produção continuam pendentes.
+
+## Fases planejadas — Área do cliente e notificações
+
+Estas fases registram a sequência acordada para manter o cliente informado sobre suas campanhas e incentivar seu retorno. Permanecem pendentes; não considerar os itens abaixo implementados até que o código, banco, experiência e critérios de aceite sejam concluídos e validados. O cadastro e a participação em campanhas devem continuar possíveis sem obrigar o cliente a fornecer e-mail, telefone ou aceitar notificações.
+
+### Fase 5 — Área do cliente e preferências [~]
+
+O primeiro recorte está implementado no repositório: a rota `/account` usa link seguro por e-mail; o cliente pode vincular registros pelo e-mail verificado ou pelo link do cartão e consultar cartões, saldo/histórico de pontos, progresso/conclusões de missões e recompensas em diferentes comércios. As preferências atuais permitem rever o consentimento de atualizações de fidelidade pelo WhatsApp por comércio e remover um comércio da conta, revogando esses envios sem apagar os registros comerciais. Os dados de vínculo ficam em tabela privada e não são expostos nas consultas de clientes dos tenants. Ainda falta aplicar `supabase/legacy-patches/add_customer_portal.sql` no Supabase e validar a jornada com sessões e dados reais. A primeira versão verifica identidade somente por e-mail; OTP por telefone, preferências de marketing/canais futuros e ajustes após validação permanecem pendentes.
+
+- [~] Permitir criar uma identidade de cliente opcional e verificável, usando um método de autenticação escolhido (por exemplo, código por e-mail ou telefone); não exigir os dois contatos. A primeira versão usa link por e-mail; outros métodos dependem de decisão/configuração.
+- [~] Manter os registros atuais de clientes isolados por `owner_id`. Vincular uma identidade Stampfy a registros de diferentes empresas somente após comprovação de posse e ação explícita do cliente; há vínculo por e-mail verificado e reivindicação de cartão, pendentes de validação no Supabase.
+- [~] Permitir que o cliente consulte cartões, campanhas em andamento e encerradas, carimbos, missões, pontos, recompensas e resgates associados à sua identidade, com a empresa de origem e o estado de cada participação. O portal já lista cartões, pontos, missões ativas/concluídas e resgates; falta validar em produção.
+- [~] Permitir acompanhar campanhas de outras empresas por seus links públicos e, quando elegível, associar a participação à identidade Stampfy. O vínculo é feito pelo e-mail verificado ou link do cartão; não criar diretório público/marketplace nesta fase.
+- [~] Criar uma central de preferências que mostre canais disponíveis e escolhas separadas para atualizações da participação e mensagens promocionais/de retorno. A primeira versão expõe atualizações de fidelidade via WhatsApp; categorias de marketing e outros canais seguem pendentes.
+- [~] Registrar consentimento de WhatsApp com data/origem e oferecer revogação por comércio na conta do cliente. Permissão de push do navegador e preferência de comunicação por empresa são controles distintos; push pertence à Fase 6.
+- [~] Preservar preferências de cada empresa; o cliente já consegue revisar o consentimento de WhatsApp por comércio e remover o comércio da conta. A ação revoga as atualizações de WhatsApp e não apaga os registros comerciais; validar após a migration.
+- [~] Garantir que um cliente consulte apenas os próprios dados; as RPCs usam a sessão autenticada e as tabelas de vínculo/preferência não são expostas diretamente. Confirmar políticas e isolamento após aplicar a migration no projeto Supabase.
+
+**Critérios de aceite:** [~] participação anônima continua disponível; identidade verificada pode reunir participações de diferentes empresas sem duplicar ou expor registros; o cliente pode consultar o histórico e ajustar/revogar preferências por canal e empresa; RLS e endpoints impedem leitura cruzada entre clientes e tenants. Validar após aplicar a migration e concluir os métodos/categorias de preferência pendentes.
+
+**Para validar a primeira versão:** aplicar `supabase/legacy-patches/add_customer_portal.sql` no projeto vinculado; confirmar nas configurações do Supabase Auth que os domínios local e de produção estão autorizados para o redirect `/account`; confirmar que o modelo de e-mail envia o link de acesso; testar vinculação por e-mail verificado e por link de cartão, contas sem cartões, cartão já vinculado a outra conta, revogação WhatsApp e isolamento entre duas contas.
+
+### Fase 6 — Base PWA e notificações push [ ]
+
+Preparar o Stampfy para instalar como PWA e receber notificações Web Push em dispositivos/navegadores compatíveis. A instalação não deve ser obrigatória para entrar em campanhas. Web Push depende de permissão explícita e de uma inscrição por navegador/dispositivo; no iOS/iPadOS, requer que o web app seja adicionado à Tela de Início em versões compatíveis. A entrega não é garantida pelo sistema operacional ou pelo navegador.
+
+- [ ] Implementar e validar manifesto, ícones, HTTPS, `service worker`, comportamento de atualização e experiência de instalação; definir o mínimo de funcionamento offline sem prometer ações de fidelidade offline que não possam ser validadas no servidor.
+- [ ] Detectar suporte e estado de permissão antes de oferecer ativação; explicar o benefício e solicitar permissão somente após ação explícita do cliente, sem exibir o prompt automaticamente ao abrir a página.
+- [ ] Permitir ativar push com uma ação clara (por exemplo, “Receber atualizações”), informar quando a instalação na Tela de Início é necessária e manter acesso às campanhas mesmo se o cliente recusar.
+- [ ] Salvar inscrição por dispositivo/navegador e associá-la à identidade verificada quando existir. Para cliente sem conta, definir um vínculo limitado e seguro à participação corrente, permitindo associar a inscrição mais tarde sem tratar o token push como identidade ou prova de posse.
+- [ ] Criar armazenamento protegido para endpoint e chaves da inscrição, com acesso somente pelo servidor, unicidade/idempotência, registro de consentimento, revogação e limpeza de inscrições inválidas ou expiradas.
+- [ ] Enviar push somente por serviço server-side com chaves VAPID em segredo de servidor; o `service worker` deve exibir uma notificação visível e abrir a campanha/cartão correto ao toque.
+- [ ] Tratar falhas, tentativas, endpoints expirados e cancelamento da inscrição sem duplicar eventos de fidelidade. Nunca enviar push apenas com base em permissão do navegador se a preferência da categoria/empresa estiver desativada.
+- [ ] Testar em Android/Chrome, desktop compatível, iOS/iPadOS com web app na Tela de Início e cenários sem suporte, permissão negada, permissão revogada, troca de dispositivo e atualização do service worker.
+
+**Critérios de aceite:** instalação é opcional; nenhum prompt aparece sem contexto e gesto do cliente; inscrição pode ser revogada; push enviado pelo servidor abre a rota correta; consentimento por empresa/categoria é respeitado; falhas de entrega não bloqueiam cartões, missões ou recompensas.
+
+### Fase 7 — Lembretes automáticos e controles para empresas [ ]
+
+Adicionar reengajamento baseado em eventos e regras explícitas, sem transformar o push em canal de mensagens excessivas. Reutilizar a outbox/worker de comunicações quando adequado, após inspecionar as migrations, preferências e idempotência existentes.
+
+- [ ] Separar atualizações transacionais da participação (visita validada, missão concluída, recompensa disponível ou próxima do vencimento) de promoções e lembretes de retorno; definir consentimento e elegibilidade para cada categoria.
+- [ ] Definir gatilhos verificáveis ligados a campanhas e dados do servidor, como progresso sem atividade por um período, missão ainda ativa ou recompensa próxima do vencimento. Não notificar após conclusão, expiração, cancelamento ou saída da campanha.
+- [ ] Criar controles por empresa para ativar/desativar categorias, escolher campanhas elegíveis, configurar cadência, validade, horário silencioso, fuso horário da empresa e conteúdo disponível para cada mensagem.
+- [ ] Oferecer modelos com variáveis permitidas e pré-visualização; validar valores e destinos no servidor. Não permitir que configurações do painel contornem consentimento ou limites globais.
+- [ ] Aplicar limite de frequência por cliente e empresa, deduplicação, idempotência, janela de envio e supressão quando o cliente já concluiu a ação. Revalidar consentimento e estado da campanha no momento do envio.
+- [ ] Selecionar canais elegíveis sem duplicar a mesma notificação: push apenas com inscrição ativa e consentimentos correspondentes; WhatsApp apenas com telefone e opt-in válido; e-mail somente quando houver endereço e consentimento/capacidade de envio configurados. Manter avisos dentro da área do cliente como histórico quando ele voltar ao sistema.
+- [ ] Registrar eventos enfileirados, tentativas e falhas; apresentar métricas compatíveis com o que cada canal realmente confirma, sem tratar push como entregue ou lido quando não houver confirmação confiável.
+- [ ] Permitir que o cliente pause ou revogue categorias e canais; a empresa não pode reativar preferências revogadas pelo cliente.
+
+**Critérios de aceite:** regras de lembrete usam eventos e horários do servidor; limites e consentimento são aplicados mesmo em chamadas concorrentes/repetidas; a empresa configura somente seus próprios envios; o cliente controla os canais/categorias; opt-out, conclusão e expiração suprimem envios futuros; cada tentativa é auditável e não altera saldo, carimbos ou progresso.
+
+### Regras transversais das fases 5–7
+
+- [ ] Fazer migrations aditivas, preservando os clientes, cartões, campanhas e preferências atuais; revisar RLS, constraints, índices, RPCs e secrets antes de publicar qualquer alteração.
+- [ ] Não tornar e-mail, telefone, conta Stampfy, instalação do PWA ou push requisitos para participar de uma campanha.
+- [ ] Manter dados de participação pertencentes a cada empresa; a área central reúne somente registros explicitamente vinculados e autorizados pelo cliente.
+- [ ] Tratar inscrição push como dado sensível por dispositivo, nunca como identificador global do cliente; guardar chaves privadas e credenciais somente no servidor.
+- [ ] Oferecer alternativa de consulta na próxima visita ao site e não prometer entrega garantida por notificações do navegador.
+- [ ] Documentar textos de consentimento, retenção, revogação, exclusão/desvinculação e suporte para perda ou troca de dispositivo antes do lançamento.
+
+**Referências técnicas:** [MDN — Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API), [MDN — boas práticas para Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API/Best_Practices), [Apple — Web Push em web apps e navegadores](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers), [Apple — Safari 16.4 release notes](https://developer.apple.com/documentation/safari-release-notes/safari-16_4-release-notes?changes=_5%2C_5).
