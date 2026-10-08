@@ -5,6 +5,16 @@
       "maxDuration": 60
     }
   },
+  "crons": [
+    {
+      "path": "/api/zernio-worker",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/customer-push-worker",
+      "schedule": "0 12 * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",
