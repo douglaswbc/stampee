@@ -12,9 +12,9 @@ const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$
 const escapedAppHost = escapeRegex(appHost);
 const appHostAliases = `(?:${escapedAppHost}|www\\.${escapedAppHost})`;
 const appDomainAndSubdomains = `(?:.*\\.)?${escapedAppHost}`;
-const nonPlatformHostPattern = `(?:.*\\.)?vercel\\.app(?::[0-9]+)?|localhost(?::[0-9]+)?`;
-const appHostAndPlatformHosts = `(?i)(?:${appHostAliases}(?::[0-9]+)?|${nonPlatformHostPattern})`;
-const appDomainAndPlatformHosts = `(?i)(?:${appDomainAndSubdomains}(?::[0-9]+)?|${nonPlatformHostPattern})`;
+const nonPlatformHostPattern = `(?:.*\\.)?vercel\\.app|localhost`;
+const appHostAndPlatformHosts = `(?:${appHostAliases}|${nonPlatformHostPattern})`;
+const appDomainAndPlatformHosts = `(?:${appDomainAndSubdomains}|${nonPlatformHostPattern})`;
 
 export const config = {
   functions: {
@@ -67,20 +67,20 @@ export const config = {
     {
       src: '/(?!api(?:/|$))(?<sitePath>.*)',
       has: [
-        { type: 'host', value: '(?<tenantHost>(?!(?:www|app|api|admin)\\.)[a-z0-9-]+(?:\\.[a-z0-9-]+)+\\.[a-z]{2,})' },
-      ],
-      missing: [
-        { type: 'host', value: appHostAndPlatformHosts },
+        {
+          type: 'host',
+          value: `(?i)(?<tenantHost>(?!(?:www|app|api|admin)\\.)(?!${appHostAndPlatformHosts}(?::[0-9]+)?$)[a-z0-9-]+(?:\\.[a-z0-9-]+)+\\.[a-z]{2,})`,
+        },
       ],
       dest: '/api/public-site?host=$tenantHost&path=/$sitePath',
     },
     {
       src: '/(?!api(?:/|$))(?<sitePath>.*)',
       has: [
-        { type: 'host', value: '(?<tenantHost>[^/:]+)(?::[0-9]+)?' },
-      ],
-      missing: [
-        { type: 'host', value: appDomainAndPlatformHosts },
+        {
+          type: 'host',
+          value: `(?i)(?<tenantHost>(?!${appDomainAndPlatformHosts}(?::[0-9]+)?$)[^/:]+)(?::[0-9]+)?`,
+        },
       ],
       dest: '/api/public-site?host=$tenantHost&path=/$sitePath',
     },
