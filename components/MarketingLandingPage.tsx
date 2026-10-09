@@ -1,6 +1,10 @@
 import React from 'react';
-import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, Gift, Heart, History, Menu, QrCode, Smartphone, Sparkles, Stamp, Target, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, Gift, Globe2, Heart, History, Menu, MessageCircle, QrCode, Smartphone, Sparkles, Stamp, Target, Users, X } from 'lucide-react';
 import { trackEvent } from '../lib/analytics';
+
+const commercialNumber = (import.meta.env.VITE_NUMBER_COMERCIAL ?? '').replace(/\D/g, '');
+const consultantMessage = 'Olá! Gostaria de falar com um consultor Stampfy.';
+const consultantHref = `https://wa.me/${commercialNumber}?text=${encodeURIComponent(consultantMessage)}`;
 
 const problemCards = [
   { number: '01', title: 'A visita acontece uma vez', description: 'Depois da compra, o contato pode se perder e o cliente não tem um motivo claro para lembrar do seu negócio.' },
@@ -25,6 +29,7 @@ const features = [
   { icon: Sparkles, title: 'Pontos e níveis', description: 'Premie visitas com pontos e personalize níveis e benefícios para cada faixa.' },
   { icon: Target, title: 'Missões de fidelidade', description: 'Crie desafios por visitas ou selos, com prazo, meta e recompensa.' },
   { icon: Gift, title: 'Catálogo de recompensas', description: 'Cadastre benefícios, controle o estoque e valide resgates com códigos.' },
+  { icon: Globe2, title: 'Site do seu comércio', description: 'Crie páginas e um catálogo de produtos ou serviços e publique com endereço Stampfy ou domínio próprio.' },
 ];
 
 const businesses = [
@@ -46,7 +51,8 @@ const questions = [
   { question: 'Posso acompanhar os resultados?', answer: 'O painel reúne indicadores de clientes, cartões, visitas registradas e resgates dentro do período consultado.' },
   { question: 'O Stampfy funciona para qualquer comércio?', answer: 'As campanhas são personalizáveis e podem atender diferentes negócios locais, como cafés, salões, barbearias, pet shops e serviços automotivos.' },
   { question: 'Como faço para começar?', answer: 'Acesse o cadastro, configure as informações do seu negócio e crie sua primeira campanha.' },
-  { question: 'Há planos e preços publicados?', answer: 'Os preços não estão publicados nesta página. Fale com a equipe para confirmar as condições comerciais atuais antes de contratar.' },
+  { question: 'Posso criar um site para o meu comércio?', answer: 'Sim. Você pode criar páginas e um catálogo de produtos ou serviços e publicar o site no endereço Stampfy ou em um domínio próprio. O apontamento de domínio próprio já está configurado.' },
+  { question: 'Quais são os preços do Stampfy?', answer: 'O plano mensal custa R$ 87,00. No plano anual, você paga R$ 870,00 por 12 meses de acesso: o equivalente a 10 mensalidades, com 2 meses grátis. Os planos incluem as ferramentas de fidelidade e a criação do site do seu comércio.' },
 ];
 
 const trackCta = (placement: string) => {
@@ -70,6 +76,7 @@ const MarketingLandingPage: React.FC = () => (
         <a href="#como-funciona">Como funciona</a>
         <a href="#recursos">Recursos</a>
         <a href="#demonstracao">Demonstração</a>
+        <a href="#condicoes">Preço</a>
         <a href="#duvidas">Dúvidas</a>
       </nav>
       <div className="marketing-header-actions">
@@ -82,7 +89,9 @@ const MarketingLandingPage: React.FC = () => (
           <a href="#como-funciona" onClick={closeMobileMenu}>Como funciona</a>
           <a href="#recursos" onClick={closeMobileMenu}>Recursos</a>
           <a href="#demonstracao" onClick={closeMobileMenu}>Demonstração</a>
+          <a href="#condicoes" onClick={closeMobileMenu}>Preço</a>
           <a href="#duvidas" onClick={closeMobileMenu}>Dúvidas</a>
+          <a href={consultantHref} target="_blank" rel="noreferrer" onClick={closeMobileMenu}>Falar com consultor</a>
           <a href="/login">Entrar</a>
         </nav>
       </details>
@@ -166,8 +175,11 @@ const MarketingLandingPage: React.FC = () => (
     </section>
 
     <section className="marketing-pricing" id="condicoes" aria-labelledby="pricing-title">
-      <div className="pricing-copy"><span className="marketing-eyebrow">Próximo passo</span><h2 id="pricing-title">Conheça o Stampfy<br />para o seu negócio.</h2><p>O cadastro da conta está disponível. Como não há uma tabela pública de preços nesta página, confirme as condições comerciais atuais com a equipe antes de contratar.</p></div>
-      <div className="pricing-actions"><a className="marketing-button" href="/signup" onClick={() => trackCta('conditions')}>Acessar cadastro <ArrowRight size={18} /></a><a className="marketing-text-link" href="mailto:hello@stampee.co?subject=Condi%C3%A7%C3%B5es%20comerciais%20Stampfy">Perguntar sobre condições <ArrowRight size={16} /></a></div>
+      <div className="pricing-copy"><span className="marketing-eyebrow">Um plano para o seu negócio</span><h2 id="pricing-title">Fidelidade e site<br />do seu comércio.</h2><div className="pricing-options">
+        <article className="pricing-option"><span className="pricing-period">Mensal</span><div className="pricing-value" aria-label="87 reais por mês"><strong>R$ 87,00</strong><span>/ mês</span></div></article>
+        <article className="pricing-option pricing-option-featured"><div className="pricing-period-row"><span className="pricing-period">Anual</span><span className="pricing-badge">2 meses grátis</span></div><div className="pricing-value" aria-label="870 reais por ano"><strong>R$ 870,00</strong><span>/ ano</span></div><p>Pague o equivalente a 10 mensalidades e tenha 12 meses de acesso. Equivale a R$ 72,50 por mês.</p></article>
+      </div><p>Os planos incluem as ferramentas de fidelidade do Stampfy e a criação do site do seu comércio. Você pode usar o endereço Stampfy ou apontar um domínio próprio, cuja configuração já está disponível.</p></div>
+      <div className="pricing-actions"><a className="marketing-button" href="/signup" onClick={() => trackCta('conditions')}>Acessar cadastro <ArrowRight size={18} /></a><a className="marketing-text-link" href={consultantHref} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Falar com consultor <ArrowRight size={16} /></a></div>
     </section>
 
     <section className="marketing-faq" id="duvidas" aria-labelledby="faq-title">
@@ -177,7 +189,7 @@ const MarketingLandingPage: React.FC = () => (
 
     <section className="marketing-cta" aria-labelledby="cta-title"><span className="marketing-eyebrow">Valorize cada visita</span><h2 id="cta-title">Seus clientes têm motivos<br className="wide-break" /> para voltar. Ajude-os a lembrar.</h2><p>Crie seu programa de fidelidade e ofereça uma experiência que reconhece cada visita ao seu negócio.</p><a className="marketing-button marketing-button-light" href="/signup" onClick={() => trackCta('footer')}>Começar com o Stampfy <ArrowRight size={18} /></a></section>
 
-    <footer className="marketing-footer"><a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" width="420" height="110" /></a><span>Feito para aproximar negócios e pessoas.</span><div><a href="mailto:hello@stampee.co">Contato</a><a href="/login">Entrar</a></div><small>© {new Date().getFullYear()} Stampfy</small></footer>
+    <footer className="marketing-footer"><a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" width="420" height="110" /></a><span>Feito para aproximar negócios e pessoas.</span><div><a href={consultantHref} target="_blank" rel="noreferrer">Falar com consultor</a><a href="/login">Entrar</a></div><small>© {new Date().getFullYear()} Stampfy</small></footer>
   </main>
 );
 
