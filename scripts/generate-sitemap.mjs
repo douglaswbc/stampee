@@ -8,7 +8,7 @@ const OUTPUT_PATH = resolve(process.cwd(), "public", "sitemap.xml");
 const ROBOTS_PATH = resolve(process.cwd(), "public", "robots.txt");
 
 const staticRoutes = [
-  { path: "/", lastmod: "2026-10-08", changefreq: "weekly", priority: "1.0" },
+  { path: "/", lastmod: "2026-10-09", changefreq: "weekly", priority: "1.0" },
   { path: "/showcase", lastmod: "2026-03-03", changefreq: "weekly", priority: "0.8" },
   { path: "/articles", lastmod: "2026-03-03", changefreq: "weekly", priority: "0.8" },
   { path: "/privacy-policy", lastmod: "2026-03-03", changefreq: "monthly", priority: "0.5" },
@@ -58,5 +58,6 @@ const robots = readFileSync(ROBOTS_PATH, "utf8")
   .split(/\r?\n/)
   .filter((line) => !/^\s*Sitemap:/i.test(line))
   .filter((line, index, lines) => line !== "" || lines[index - 1] !== "");
+while (robots.at(-1) === "") robots.pop();
 robots.push("", `Sitemap: ${SITE_ORIGIN}/sitemap.xml`, `Sitemap: ${SITE_ORIGIN}/sites-sitemap.xml`, "");
 writeFileSync(ROBOTS_PATH, robots.join("\n"), "utf8");

@@ -1,81 +1,180 @@
 import React from 'react';
-import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, Gift, Heart, QrCode, Smartphone, Sparkles, Stamp, Zap } from 'lucide-react';
-import './MarketingLandingPage.css';
+import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, CircleHelp, Gift, Heart, History, Menu, QrCode, Smartphone, Sparkles, Stamp, Users, X } from 'lucide-react';
+import { trackEvent } from '../lib/analytics';
 
-const features = [
-  { icon: Stamp, title: 'Cartão fidelidade digital', description: 'Crie campanhas de selos com a identidade do seu negócio e uma recompensa que faça sentido para os seus clientes.' },
-  { icon: QrCode, title: 'Adesão com QR code', description: 'O cliente aponta a câmera do celular, entra na campanha e já pode acompanhar o cartão. Sem baixar aplicativo.' },
-  { icon: Gift, title: 'Recompensas que dão vontade de voltar', description: 'Ofereça um produto, benefício ou pontos. Acompanhe resgates e deixe as regras da campanha claras.' },
-  { icon: BarChart3, title: 'Visão do seu movimento', description: 'Consulte cartões emitidos, visitas registradas e a atividade dos clientes em um só painel.' },
+const problemCards = [
+  { number: '01', title: 'A visita acontece uma vez', description: 'Depois da compra, o contato pode se perder e o cliente não tem um motivo claro para lembrar do seu negócio.' },
+  { number: '02', title: 'Falta um convite para voltar', description: 'Sem uma campanha simples, fica mais difícil mostrar ao cliente que cada nova visita tem valor.' },
+  { number: '03', title: 'O histórico fica espalhado', description: 'Anotações e cartões de papel não ajudam a visualizar com facilidade a participação nas campanhas.' },
 ];
 
 const steps = [
-  { number: '01', title: 'Monte seu cartão', description: 'Escolha um modelo, personalize as cores e defina quantos selos valem uma recompensa.' },
-  { number: '02', title: 'Convide seus clientes', description: 'Compartilhe o QR code no balcão, na vitrine ou nas redes sociais. O cadastro acontece pelo celular.' },
-  { number: '03', title: 'Registre visitas e recompense', description: 'Sua equipe valida os selos e você acompanha a evolução da campanha.' },
+  { number: '1', title: 'Crie sua campanha', description: 'Personalize o cartão, escolha a meta de selos e defina a recompensa.' },
+  { number: '2', title: 'Convide seus clientes', description: 'Compartilhe o QR Code no balcão, na vitrine ou nos seus canais.' },
+  { number: '3', title: 'Registre as visitas', description: 'Sua equipe valida a visita pelo atendimento e o cliente acompanha o cartão no celular.' },
+  { number: '4', title: 'Recompense e acompanhe', description: 'Quando a meta da campanha é concluída, a equipe confere a recompensa e você consulta a atividade.' },
+];
+
+const features = [
+  { icon: Stamp, title: 'Cartões de fidelidade', description: 'Personalize a aparência, a quantidade de selos e a recompensa de cada cartão.' },
+  { icon: QrCode, title: 'Campanhas com QR Code', description: 'Ajude o cliente a encontrar sua campanha e entrar pelo navegador do celular.' },
+  { icon: Users, title: 'Clientes e visitas', description: 'Consulte os cadastros, cartões emitidos e o histórico de atividade do seu negócio.' },
+  { icon: Check, title: 'Atendimento pela equipe', description: 'Crie acessos para sua equipe registrar visitas e conferir recompensas.' },
+  { icon: BarChart3, title: 'Acompanhamento', description: 'Veja a atividade das campanhas, o andamento dos cartões e os resgates registrados.' },
+  { icon: Gift, title: 'Recompensas definidas por você', description: 'Escolha um benefício para a campanha e acompanhe quando ele fica disponível.' },
+];
+
+const businesses = [
+  { title: 'Barbearias', example: 'Um benefício depois de completar o ciclo de cortes definido pela barbearia.' },
+  { title: 'Cafeterias e lanchonetes', example: 'Um cartão de visitas para quem gosta de voltar para o café.' },
+  { title: 'Salões e esmalterias', example: 'Uma recompensa para reconhecer a frequência de cada cliente.' },
+  { title: 'Pet shops', example: 'Uma campanha para clientes que retornam para cuidar dos seus pets.' },
+  { title: 'Lavagem automotiva', example: 'Selos por serviço concluído e um benefício escolhido pelo estabelecimento.' },
+  { title: 'Outros negócios locais', example: 'Personalize a campanha de acordo com o serviço e com seu público.' },
 ];
 
 const questions = [
-  { question: 'Meus clientes precisam instalar um aplicativo?', answer: 'Não. Eles acessam o cartão pelo navegador do celular, usando o link ou QR code da campanha.' },
-  { question: 'Como os selos são validados?', answer: 'A equipe do comércio acessa o portal de atendimento e registra os selos durante a visita do cliente.' },
-  { question: 'Que tipos de comércio podem usar o Stampfy?', answer: 'Cafés, salões, barbearias, restaurantes, lojas, estúdios e outros comércios locais que queiram incentivar novas visitas.' },
-  { question: 'Posso criar mais de uma campanha?', answer: 'Sim. Você pode organizar campanhas de fidelidade para diferentes produtos, serviços ou objetivos.' },
+  { question: 'O que é o Stampfy?', answer: 'O Stampfy é uma plataforma de fidelização para negócios locais. O comércio cria campanhas, registra visitas e acompanha cartões e recompensas em um só lugar.' },
+  { question: 'Meu cliente precisa instalar um aplicativo?', answer: 'Não. O cartão pode ser acessado pelo navegador do celular por meio do link ou QR Code da campanha.' },
+  { question: 'Como funciona a validação por QR Code?', answer: 'O QR Code pode levar o cliente à campanha. A equipe acessa o atendimento do comércio para registrar visitas e conferir cartões.' },
+  { question: 'Posso criar diferentes campanhas?', answer: 'Sim. O comércio pode criar campanhas com cartões, metas e recompensas próprias.' },
+  { question: 'Como o cliente recebe a recompensa?', answer: 'Ao concluir a meta definida no cartão, o cliente mostra o progresso à equipe, que confere e registra a recompensa.' },
+  { question: 'Minha equipe pode registrar visitas?', answer: 'Sim. O proprietário pode criar acessos de equipe para apoiar o atendimento e o registro de visitas.' },
+  { question: 'Posso acompanhar os resultados?', answer: 'O painel reúne indicadores de clientes, cartões, visitas registradas e resgates dentro do período consultado.' },
+  { question: 'O Stampfy funciona para qualquer comércio?', answer: 'As campanhas são personalizáveis e podem atender diferentes negócios locais, como cafés, salões, barbearias, pet shops e serviços automotivos.' },
+  { question: 'Como faço para começar?', answer: 'Acesse o cadastro, configure as informações do seu negócio e crie sua primeira campanha.' },
+  { question: 'Há planos e preços publicados?', answer: 'Os preços não estão publicados nesta página. Fale com a equipe para confirmar as condições comerciais atuais antes de contratar.' },
 ];
+
+const trackCta = (placement: string) => {
+  const query = new URLSearchParams(window.location.search);
+  trackEvent('Landing CTA Clicked', {
+    placement,
+    source: query.get('utm_source'),
+    medium: query.get('utm_medium'),
+    campaign: query.get('utm_campaign'),
+  });
+};
+const closeMobileMenu = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  event.currentTarget.closest('details')?.removeAttribute('open');
+};
 
 const MarketingLandingPage: React.FC = () => (
   <main className="marketing-page">
     <header className="marketing-header">
-      <a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" /></a>
+      <a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" width="420" height="110" /></a>
       <nav className="marketing-nav" aria-label="Navegação principal">
         <a href="#como-funciona">Como funciona</a>
         <a href="#recursos">Recursos</a>
+        <a href="#demonstracao">Demonstração</a>
         <a href="#duvidas">Dúvidas</a>
       </nav>
-      <div className="marketing-header-actions"><a className="marketing-login" href="/login">Entrar</a><a className="marketing-button marketing-button-small" href="/signup">Começar agora <ArrowRight size={16} /></a></div>
+      <div className="marketing-header-actions">
+        <a className="marketing-login" href="/login">Entrar</a>
+        <a className="marketing-button marketing-button-small" href="/signup" onClick={() => trackCta('header')}><span className="desktop-label">Criar minha conta</span><span className="mobile-label">Criar conta</span><ArrowRight size={16} /></a>
+      </div>
+      <details className="marketing-mobile-menu">
+        <summary aria-label="Abrir ou fechar menu"><Menu className="menu-open-icon" size={21} /><X className="menu-close-icon" size={21} /></summary>
+        <nav aria-label="Navegação móvel">
+          <a href="#como-funciona" onClick={closeMobileMenu}>Como funciona</a>
+          <a href="#recursos" onClick={closeMobileMenu}>Recursos</a>
+          <a href="#demonstracao" onClick={closeMobileMenu}>Demonstração</a>
+          <a href="#duvidas" onClick={closeMobileMenu}>Dúvidas</a>
+          <a href="/login">Entrar</a>
+        </nav>
+      </details>
     </header>
 
-    <section className="marketing-hero">
+    <section className="marketing-hero" aria-labelledby="hero-title">
       <div className="marketing-hero-copy">
-        <span className="marketing-eyebrow"><Sparkles size={15} /> Fidelidade para o comércio local</span>
-        <h1>Quem volta sempre<br />merece <span>mais.</span></h1>
-        <p>Crie um cartão fidelidade digital para o seu negócio e transforme cada visita em um motivo para voltar.</p>
-        <div className="marketing-hero-actions"><a className="marketing-button" href="/signup">Criar meu cartão <ArrowRight size={18} /></a><a className="marketing-text-link" href="#como-funciona">Conheça o Stampfy <ArrowDown size={16} /></a></div>
-        <div className="marketing-proof"><span className="proof-icon"><Check size={15} /></span><span>Comece pelo digital, direto no celular do seu cliente.</span></div>
-      </div>
-      <div className="marketing-hero-art" aria-label="Exemplo de cartão fidelidade Stampfy" role="img">
-        <div className="hero-spark hero-spark-one">✳</div><div className="hero-spark hero-spark-two">✳</div>
-        <div className="loyalty-card-mock">
-          <div className="mock-card-top"><span className="mock-shop-mark"><Heart size={18} fill="currentColor" /></span><span className="mock-card-label">CLUBE DE VANTAGENS</span><span className="mock-more">•••</span></div>
-          <div className="mock-shop-name">casa <em>flor</em></div>
-          <p className="mock-card-subtitle">Um carinho a cada visita.</p>
-          <div className="stamp-grid" aria-hidden="true">{Array.from({ length: 8 }, (_, index) => <span className={index < 5 ? 'stamp-dot stamp-dot-filled' : 'stamp-dot'} key={index}>{index < 5 ? <Heart size={20} fill="currentColor" /> : <span>{index + 1}</span>}</span>)}</div>
-          <div className="mock-card-footer"><span>5 de 8 visitas</span><span>3 para ganhar um presente</span></div>
+        <span className="marketing-eyebrow"><Sparkles size={15} /> Fidelização digital para negócios locais</span>
+        <h1 id="hero-title">Transforme clientes<br className="wide-break" /> ocasionais em clientes<br className="wide-break" /> recorrentes.</h1>
+        <p>Crie campanhas de fidelidade, recompense cada visita e acompanhe o relacionamento com seus clientes em um só lugar. Tudo de forma simples para sua equipe e para quem compra no seu negócio.</p>
+        <div className="marketing-hero-actions">
+          <a className="marketing-button" href="/signup" onClick={() => trackCta('hero')}>Criar meu programa de fidelidade <ArrowRight size={18} /></a>
+          <a className="marketing-text-link" href="#demonstracao" onClick={() => trackEvent('Landing Demo CTA Clicked', { placement: 'hero' })}>Ver como funciona <ArrowDown size={16} /></a>
         </div>
-        <div className="hero-note note-top"><span className="note-icon"><QrCode size={19} /></span><span><strong>É só apontar a câmera</strong><small>Sem instalar aplicativo</small></span></div>
-        <div className="hero-note note-bottom"><span className="note-icon note-gift"><Gift size={19} /></span><span><strong>Mais uma visita!</strong><small>Seu cliente está quase lá</small></span><span className="note-check"><Check size={14} /></span></div>
-        <div className="hero-blob" />
+        <ul className="marketing-benefits" aria-label="Benefícios do Stampfy">
+          <li><Check size={15} /> Sem instalar aplicativo</li>
+          <li><Check size={15} /> Cartões digitais e QR Code</li>
+          <li><Check size={15} /> Visitas e recompensas acompanhadas</li>
+        </ul>
+      </div>
+      <div className="marketing-hero-visual">
+        <div className="hero-visual-backdrop" />
+        <div className="hero-visual-label"><span><Smartphone size={17} /></span><div><strong>Cartão no celular</strong><small>Um exemplo de campanha Stampfy</small></div></div>
+        <figure className="hero-card-frame">
+          <img src="/demo_3.png" alt="Exemplo ilustrativo de cartão de fidelidade digital de uma sorveteria, com selos e recompensa." width="393" height="850" />
+        </figure>
+        <div className="hero-visual-sticker"><QrCode size={18} /><span>Encontre sua campanha<br />pelo QR Code</span></div>
       </div>
     </section>
 
-    <div className="marketing-strip"><span><Zap size={16} /> Simples para sua equipe</span><i /><span><Smartphone size={16} /> Fácil para seu cliente</span><i /><span><Heart size={16} /> Feito para o comércio local</span></div>
+    <div className="marketing-strip" aria-label="Como o Stampfy ajuda seu comércio">
+      <span><Smartphone size={17} /> Prático para o cliente</span><i aria-hidden="true" />
+      <span><QrCode size={17} /> Direto pelo navegador</span><i aria-hidden="true" />
+      <span><Heart size={17} /> Feito para negócios locais</span>
+    </div>
 
-    <section className="marketing-section marketing-how" id="como-funciona">
-      <div className="section-heading"><span className="marketing-eyebrow">Seu programa de fidelidade, sem complicação</span><h2>Da primeira visita<br />à próxima recompensa.</h2><p>Uma experiência simples para o cliente e prática para quem está no balcão.</p></div>
-      <div className="steps-grid">{steps.map((step) => <article className="step-card" key={step.number}><span className="step-number">{step.number}</span><span className="step-rule" /><h3>{step.title}</h3><p>{step.description}</p></article>)}</div>
+    <section className="marketing-section marketing-problem" aria-labelledby="problem-title">
+      <div className="section-heading"><span className="marketing-eyebrow">Um desafio de todo dia</span><h2 id="problem-title">Seu cliente comprou hoje.<br />O que faz ele voltar amanhã?</h2><p>O Stampfy ajuda seu comércio a transformar visitas em oportunidades de relacionamento contínuo.</p></div>
+      <div className="problem-grid">{problemCards.map((item) => <article className="problem-card" key={item.number}><span className="problem-number">{item.number}</span><h3>{item.title}</h3><p>{item.description}</p></article>)}</div>
     </section>
 
-    <section className="marketing-feature-section" id="recursos">
-      <div className="feature-intro"><span className="marketing-eyebrow">Tudo em um só lugar</span><h2>Seu jeito de cuidar<br />de quem escolhe você.</h2><p>Ferramentas para criar sua campanha, facilitar o atendimento e manter o relacionamento ativo.</p><a className="marketing-button" href="/signup">Quero experimentar <ArrowRight size={18} /></a></div>
-      <div className="features-grid">{features.map(({ icon: Icon, title, description }) => <article className="feature-card" key={title}><span className="feature-icon"><Icon size={21} /></span><h3>{title}</h3><p>{description}</p></article>)}</div>
+    <section className="marketing-how" id="como-funciona" aria-labelledby="how-title">
+      <div className="marketing-section">
+        <div className="section-heading"><span className="marketing-eyebrow">Do primeiro selo à recompensa</span><h2 id="how-title">Seu programa de fidelidade<br />em poucos passos.</h2><p>Uma rotina simples de explicar para a equipe e fácil de acompanhar para o cliente.</p></div>
+        <ol className="steps-grid">{steps.map((step) => <li className="step-card" key={step.number}><span className="step-number">{step.number}</span><span className="step-rule" aria-hidden="true" /><h3>{step.title}</h3><p>{step.description}</p></li>)}</ol>
+      </div>
     </section>
 
-    <section className="marketing-audience"><div><span className="marketing-eyebrow">Feito para estar perto</span><h2>Pequeno no tamanho.<br /><span>Gigante na relação.</span></h2></div><p>Do café da esquina ao estúdio de beleza, um programa de fidelidade ajuda seu comércio a reconhecer cada pessoa que escolhe voltar.</p><div className="audience-tags"><span>☕ Cafés e restaurantes</span><span>✂️ Salões e barbearias</span><span>🛍️ Lojas locais</span><span>🧘 Estúdios e serviços</span></div></section>
+    <section className="marketing-feature-section" id="recursos" aria-labelledby="features-title">
+      <div className="marketing-feature-inner">
+        <div className="feature-intro"><span className="marketing-eyebrow">Fidelidade e relacionamento</span><h2 id="features-title">Mais do que um cartão.<br />Um jeito de cuidar da relação.</h2><p>Ferramentas para convidar, reconhecer e acompanhar quem escolhe o seu negócio.</p><a className="marketing-button" href="/signup" onClick={() => trackCta('features')}>Conhecer o Stampfy <ArrowRight size={18} /></a></div>
+        <div className="features-grid">{features.map(({ icon: Icon, title, description }) => <article className="feature-card" key={title}><span className="feature-icon"><Icon size={21} /></span><h3>{title}</h3><p>{description}</p></article>)}</div>
+        <p className="feature-note"><CircleHelp size={16} /> Recursos de pontos, níveis, missões e catálogo podem depender da configuração da plataforma.</p>
+      </div>
+    </section>
 
-    <section className="marketing-faq" id="duvidas"><div className="faq-heading"><span className="marketing-eyebrow">Ficou com alguma dúvida?</span><h2>Respostas sem<br />letra miúda.</h2><a href="mailto:hello@stampee.co">Fale com a gente <ArrowRight size={16} /></a></div><div className="faq-list">{questions.map((item) => <details key={item.question}><summary>{item.question}<ChevronDown size={18} /></summary><p>{item.answer}</p></details>)}</div></section>
+    <section className="marketing-relationship" aria-labelledby="relationship-title">
+      <div className="relationship-copy"><span className="marketing-eyebrow">Cada visita conta uma história</span><h2 id="relationship-title">A fidelidade não termina na primeira recompensa.</h2><p>O Stampfy organiza a participação nas campanhas, as visitas registradas e os resgates para ajudar você a entender o percurso de cada cliente.</p><ul><li><History size={17} /> Histórico de cartões e visitas</li><li><Gift size={17} /> Recompensas acompanhadas pela equipe</li><li><BarChart3 size={17} /> Indicadores para consultar a atividade</li></ul><small>O Stampfy registra a atividade das campanhas; os resultados dependem da participação dos seus clientes.</small></div>
+      <div className="relationship-flow" role="img" aria-label="Representação do fluxo: campanha criada, visita registrada e recompensa conferida"><div className="relationship-flow-item"><span><Stamp size={22} /></span><b>Campanha criada</b></div><ArrowRight aria-hidden="true" /><div className="relationship-flow-item"><span><Users size={22} /></span><b>Visita registrada</b></div><ArrowRight aria-hidden="true" /><div className="relationship-flow-item"><span><Gift size={22} /></span><b>Recompensa conferida</b></div><p className="relationship-caption">Representação do fluxo de fidelidade. O resultado depende da adesão e da atividade dos clientes.</p></div>
+    </section>
 
-    <section className="marketing-cta"><div className="cta-spark">✳</div><span className="marketing-eyebrow">Um bom motivo para voltar</span><h2>Seu próximo cliente fiel<br />pode chegar hoje.</h2><p>Crie seu cartão e convide seus clientes para fazer parte.</p><a className="marketing-button marketing-button-light" href="/signup">Começar agora <ArrowRight size={18} /></a></section>
+    <section className="marketing-audience" aria-labelledby="audience-title">
+      <div className="section-heading"><span className="marketing-eyebrow">Feito para estar perto</span><h2 id="audience-title">Para negócios que vivem<br />de clientes que voltam.</h2><p>Crie campanhas com regras e recompensas que combinem com o seu atendimento.</p></div>
+      <div className="audience-grid">{businesses.map((business, index) => <article className="audience-card" key={business.title}><span className={`audience-mark audience-mark-${index + 1}`} aria-hidden="true">{['✂', '☕', '✳', '♡', '◉', '＋'][index]}</span><h3>{business.title}</h3><p>{business.example}</p></article>)}</div>
+      <p className="audience-caption">Os exemplos são ideias de campanha. O benefício e as regras são definidos pelo próprio estabelecimento.</p>
+    </section>
 
-    <footer className="marketing-footer"><a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" /></a><span>Feito para aproximar negócios e pessoas.</span><div><a href="mailto:hello@stampee.co">Contato</a><a href="/login">Entrar</a></div><small>© {new Date().getFullYear()} Stampfy</small></footer>
+    <section className="marketing-differentials" aria-labelledby="differentials-title">
+      <div><span className="marketing-eyebrow">Simples para o comércio. Prático para o cliente.</span><h2 id="differentials-title">Fidelidade que cabe<br />na rotina do balcão.</h2></div>
+      <div className="differential-list"><p><Check size={17} /> O cliente abre o cartão no navegador, sem instalar aplicativo.</p><p><Check size={17} /> O QR Code facilita o acesso à campanha.</p><p><Check size={17} /> Você define a aparência e as regras do cartão.</p><p><Check size={17} /> A equipe registra visitas com seu próprio acesso.</p><p><Check size={17} /> O histórico reúne cartões, visitas e recompensas.</p></div>
+    </section>
+
+    <section className="marketing-demo" id="demonstracao" aria-labelledby="demo-title">
+      <div className="marketing-demo-inner">
+        <div className="demo-copy"><span className="marketing-eyebrow">Um exemplo visual do produto</span><h2 id="demo-title">Veja o cartão pelo olhar do cliente.</h2><p>O cliente abre o link no celular, confere as regras da campanha e acompanha os selos registrados pela equipe.</p><a className="marketing-button" href="/signup" onClick={() => trackCta('demo')}>Criar meu programa <ArrowRight size={18} /></a><small>Imagem de campanha demonstrativa. As informações exibidas são exemplos.</small></div>
+        <div className="demo-content">
+          <figure className="demo-card-image"><img src="/demo_3.png" alt="Captura de tela de um cartão de fidelidade de demonstração no Stampfy." width="393" height="850" loading="lazy" /><figcaption>Exemplo de cartão digital</figcaption></figure>
+          <ol className="demo-flow"><li><span>1</span><b>Comércio cria a campanha</b></li><li><span>2</span><b>Cliente abre o cartão</b></li><li><span>3</span><b>Equipe registra a visita</b></li><li><span>4</span><b>Cliente acompanha o progresso</b></li><li><span>5</span><b>Recompensa conferida no comércio</b></li></ol>
+        </div>
+      </div>
+    </section>
+
+    <section className="marketing-pricing" id="condicoes" aria-labelledby="pricing-title">
+      <div className="pricing-copy"><span className="marketing-eyebrow">Próximo passo</span><h2 id="pricing-title">Conheça o Stampfy<br />para o seu negócio.</h2><p>O cadastro da conta está disponível. Como não há uma tabela pública de preços nesta página, confirme as condições comerciais atuais com a equipe antes de contratar.</p></div>
+      <div className="pricing-actions"><a className="marketing-button" href="/signup" onClick={() => trackCta('conditions')}>Acessar cadastro <ArrowRight size={18} /></a><a className="marketing-text-link" href="mailto:hello@stampee.co?subject=Condi%C3%A7%C3%B5es%20comerciais%20Stampfy">Perguntar sobre condições <ArrowRight size={16} /></a></div>
+    </section>
+
+    <section className="marketing-faq" id="duvidas" aria-labelledby="faq-title">
+      <div className="faq-heading"><span className="marketing-eyebrow">Perguntas frequentes</span><h2 id="faq-title">O que você precisa<br />saber para começar.</h2><p>Respostas diretas sobre a rotina do cartão digital.</p></div>
+      <div className="faq-list">{questions.map((item) => <details key={item.question}><summary>{item.question}<ChevronDown size={18} /></summary><p>{item.answer}</p></details>)}</div>
+    </section>
+
+    <section className="marketing-cta" aria-labelledby="cta-title"><span className="marketing-eyebrow">Valorize cada visita</span><h2 id="cta-title">Seus clientes têm motivos<br className="wide-break" /> para voltar. Ajude-os a lembrar.</h2><p>Crie seu programa de fidelidade e ofereça uma experiência que reconhece cada visita ao seu negócio.</p><a className="marketing-button marketing-button-light" href="/signup" onClick={() => trackCta('footer')}>Começar com o Stampfy <ArrowRight size={18} /></a></section>
+
+    <footer className="marketing-footer"><a className="marketing-brand" href="/" aria-label="Stampfy, início"><img src="/stampfy.svg" alt="Stampfy" width="420" height="110" /></a><span>Feito para aproximar negócios e pessoas.</span><div><a href="mailto:hello@stampee.co">Contato</a><a href="/login">Entrar</a></div><small>© {new Date().getFullYear()} Stampfy</small></footer>
   </main>
 );
 

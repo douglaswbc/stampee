@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --configLoader runner",
     "dev:vercel": "node scripts/dev-vercel.mjs",
     "generate:sitemap": "node scripts/generate-sitemap.mjs",
-    "build": "npm run generate:sitemap && vite build",
+    "build": "npm run generate:sitemap && vite build --configLoader runner && npm run prerender:landing",
+    "prerender:landing": "node scripts/prerender-landing.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

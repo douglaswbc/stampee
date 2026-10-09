@@ -142,13 +142,13 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const canonical = `${SITE_ORIGIN}${normalizedPath}`;
   const defaultSeo: SeoConfig = {
     title: normalizedPath === '/'
-      ? 'Stampfy | Cartão fidelidade digital para o seu comércio'
+      ? 'Stampfy | Programa de Fidelidade Digital para Comércios'
       : 'Stampfy | Digital Loyalty Cards',
     description: normalizedPath === '/'
-      ? 'Crie um cartão fidelidade digital para o seu comércio local. Seus clientes acompanham as visitas pelo celular, sem instalar aplicativo.'
+      ? 'Crie campanhas de fidelidade com cartões digitais e recompensas. Acompanhe visitas, clientes e resgates do seu comércio com o Stampfy.'
       : DEFAULT_SOCIAL_DESCRIPTION,
     socialDescription: normalizedPath === '/'
-      ? 'Crie um cartão fidelidade digital para o seu comércio local. Seus clientes acompanham as visitas pelo celular, sem instalar aplicativo.'
+      ? 'Crie campanhas de fidelidade com cartões digitais e recompensas. Acompanhe visitas, clientes e resgates do seu comércio com o Stampfy.'
       : DEFAULT_SOCIAL_DESCRIPTION,
     canonical,
     robots: normalizedPath === '/' ? 'index,follow' : 'noindex,nofollow',
@@ -182,14 +182,14 @@ const SeoManager: React.FC = () => {
     setMetaTag('property', 'og:image:type', 'image/jpeg');
     setMetaTag('property', 'og:image:width', '1536');
     setMetaTag('property', 'og:image:height', '1024');
-    setMetaTag('property', 'og:image:alt', location.pathname === '/' ? 'Cartão fidelidade digital Stampfy' : 'Stampfy digital loyalty card preview');
+    setMetaTag('property', 'og:image:alt', location.pathname === '/' ? 'Exemplo de campanha de fidelidade digital Stampfy' : 'Stampfy digital loyalty card preview');
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', seo.title);
     setMetaTag('name', 'twitter:description', socialDescription);
     setMetaTag('name', 'twitter:url', seo.canonical);
     setMetaTag('name', 'twitter:image', DEFAULT_OG_IMAGE);
     setMetaTag('name', 'twitter:image:src', DEFAULT_OG_IMAGE);
-    setMetaTag('name', 'twitter:image:alt', 'Stampfy digital loyalty card preview');
+    setMetaTag('name', 'twitter:image:alt', location.pathname === '/' ? 'Exemplo de campanha de fidelidade digital Stampfy' : 'Stampfy digital loyalty card preview');
   }, [location.pathname]);
 
   return null;
