@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, CircleHelp, Gift, Heart, History, Menu, QrCode, Smartphone, Sparkles, Stamp, Users, X } from 'lucide-react';
+import { ArrowDown, ArrowRight, BarChart3, Check, ChevronDown, Gift, Heart, History, Menu, QrCode, Smartphone, Sparkles, Stamp, Target, Users, X } from 'lucide-react';
 import { trackEvent } from '../lib/analytics';
 
 const problemCards = [
@@ -22,6 +22,9 @@ const features = [
   { icon: Check, title: 'Atendimento pela equipe', description: 'Crie acessos para sua equipe registrar visitas e conferir recompensas.' },
   { icon: BarChart3, title: 'Acompanhamento', description: 'Veja a atividade das campanhas, o andamento dos cartões e os resgates registrados.' },
   { icon: Gift, title: 'Recompensas definidas por você', description: 'Escolha um benefício para a campanha e acompanhe quando ele fica disponível.' },
+  { icon: Sparkles, title: 'Pontos e níveis', description: 'Premie visitas com pontos e personalize níveis e benefícios para cada faixa.' },
+  { icon: Target, title: 'Missões de fidelidade', description: 'Crie desafios por visitas ou selos, com prazo, meta e recompensa.' },
+  { icon: Gift, title: 'Catálogo de recompensas', description: 'Cadastre benefícios, controle o estoque e valide resgates com códigos.' },
 ];
 
 const businesses = [
@@ -132,7 +135,7 @@ const MarketingLandingPage: React.FC = () => (
       <div className="marketing-feature-inner">
         <div className="feature-intro"><span className="marketing-eyebrow">Fidelidade e relacionamento</span><h2 id="features-title">Mais do que um cartão.<br />Um jeito de cuidar da relação.</h2><p>Ferramentas para convidar, reconhecer e acompanhar quem escolhe o seu negócio.</p><a className="marketing-button" href="/signup" onClick={() => trackCta('features')}>Conhecer o Stampfy <ArrowRight size={18} /></a></div>
         <div className="features-grid">{features.map(({ icon: Icon, title, description }) => <article className="feature-card" key={title}><span className="feature-icon"><Icon size={21} /></span><h3>{title}</h3><p>{description}</p></article>)}</div>
-        <p className="feature-note"><CircleHelp size={16} /> Recursos de pontos, níveis, missões e catálogo podem depender da configuração da plataforma.</p>
+        <p className="feature-note"><Sparkles size={16} /> Combine cartões, pontos, níveis, missões e recompensas conforme a estratégia do seu comércio.</p>
       </div>
     </section>
 
