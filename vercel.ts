@@ -59,33 +59,31 @@ export const config = {
       ],
     },
   ],
-  routes: [
+  rewrites: [
     {
-      src: '/sites-sitemap\\.xml$',
-      dest: '/api/sites-sitemap',
+      source: '/sites-sitemap.xml',
+      destination: '/api/sites-sitemap',
     },
     {
-      src: '/(?!api(?:/|$))(?<sitePath>.*)',
+      source: '/((?!api(?:/|$)).*)',
       has: [
         {
           type: 'host',
           value: `(?i)(?<tenantHost>(?!(?:www|app|api|admin)\\.)(?!${appHostAndPlatformHosts}(?::[0-9]+)?$)[a-z0-9-]+(?:\\.[a-z0-9-]+)+\\.[a-z]{2,})`,
         },
       ],
-      dest: '/api/public-site?host=$tenantHost&path=/$sitePath',
+      destination: '/api/public-site?host=:tenantHost&path=/$1',
     },
     {
-      src: '/(?!api(?:/|$))(?<sitePath>.*)',
+      source: '/((?!api(?:/|$)).*)',
       has: [
         {
           type: 'host',
           value: `(?i)(?<tenantHost>(?!${appDomainAndPlatformHosts}(?::[0-9]+)?$)[^/:]+)(?::[0-9]+)?`,
         },
       ],
-      dest: '/api/public-site?host=$tenantHost&path=/$sitePath',
+      destination: '/api/public-site?host=:tenantHost&path=/$1',
     },
-  ],
-  rewrites: [
     {
       source: '/empresa/:slug',
       destination: '/api/public-site?slug=:slug',
@@ -93,10 +91,6 @@ export const config = {
     {
       source: '/empresa/:slug/:path*',
       destination: '/api/public-site?slug=:slug&path=/:path*',
-    },
-    {
-      source: '/sites-sitemap.xml',
-      destination: '/api/sites-sitemap',
     },
     {
       source: '/((?!api/|assets/|@vite/|@react-refresh|@id/|@fs/|.*\\..*).*)',
