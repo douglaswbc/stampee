@@ -1,5 +1,8 @@
+import { getFallbackBusinessSiteSlug, isBusinessPlatformHost } from '../lib/businessSiteDomain';
+
 const supabaseUrl = () => process.env.SUPABASE_URL?.trim() || process.env.VITE_SUPABASE_URL?.trim() || '';
 const serviceRoleKey = () => process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || '';
+const appUrl = () => process.env.VITE_APP_URL?.trim() || process.env.APP_ORIGIN?.trim() || 'https://stampee.co';
 
 const textField = (form: FormData, name: string) => {
   const value = form.get(name);
@@ -18,13 +21,34 @@ const fingerprintIp = async (ip: string, keyText: string) => {
   return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 };
 
-const redirectToContact = (slug: string, state: string) => new Response(null, {
+const redirectToContact = (slug: string, state: string, hostedSite = false) => new Response(null, {
   status: 303,
   headers: {
-    Location: `/empresa/${encodeURIComponent(slug)}/contato?lead=${encodeURIComponent(state)}`,
+    Location: `${hostedSite ? '' : `/empresa/${encodeURIComponent(slug)}`}/contato?lead=${encodeURIComponent(state)}`,
     'Cache-Control': 'no-store',
   },
 });
+
+const requestHost = (request: Request) => {
+  const forwarded = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  try { return new URL(`https://${forwarded || request.headers.get('host') || ''}`).hostname.toLowerCase(); }
+  catch { return ''; }
+};
+
+const publicSiteHostMatchesSlug = async (host: string, slug: string, baseUrl: string, key: string) => {
+  if (isBusinessPlatformHost(host, appUrl())) return true;
+  const fallbackSlug = getFallbackBusinessSiteSlug(host, appUrl());
+  if (fallbackSlug) return fallbackSlug === slug;
+
+  const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/rest/v1/rpc/get_public_business_site_by_host`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ host_input: host }),
+  });
+  if (!response.ok) return false;
+  const site = await response.json() as { slug?: unknown } | null;
+  return site?.slug === slug;
+};
 
 export default {
   async fetch(request: Request) {
@@ -48,7 +72,14 @@ export default {
 
     const baseUrl = supabaseUrl();
     const key = serviceRoleKey();
-    if (!baseUrl || !key) return redirectToContact(slug, 'error');
+    const host = requestHost(request);
+    const isPlatformHost = isBusinessPlatformHost(host, appUrl());
+    const isPlatformSubdomain = !isPlatformHost && Boolean(getFallbackBusinessSiteSlug(host, appUrl()));
+    const hostedSite = isPlatformSubdomain || !isPlatformHost;
+    if (!host || (hostedSite && (!baseUrl || !key || !(await publicSiteHostMatchesSlug(host, slug, baseUrl, key))))) {
+      return new Response('This business site is not available on this domain.', { status: 404 });
+    }
+    if (!baseUrl || !key) return redirectToContact(slug, 'error', hostedSite);
 
     const forwardedIp = request.headers.get('x-vercel-forwarded-for')
       || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -83,13 +114,13 @@ export default {
         clearTimeout(timeout);
       }
 
-      if (!response.ok) return redirectToContact(slug, 'error');
+      if (!response.ok) return redirectToContact(slug, 'error', hostedSite);
       const result = await response.json() as { outcome?: string };
-      if (result.outcome === 'created' || result.outcome === 'accepted') return redirectToContact(slug, 'success');
-      if (result.outcome === 'rate_limited') return redirectToContact(slug, 'rate-limited');
-      return redirectToContact(slug, 'error');
+      if (result.outcome === 'created' || result.outcome === 'accepted') return redirectToContact(slug, 'success', hostedSite);
+      if (result.outcome === 'rate_limited') return redirectToContact(slug, 'rate-limited', hostedSite);
+      return redirectToContact(slug, 'error', hostedSite);
     } catch {
-      return redirectToContact(slug, 'error');
+      return redirectToContact(slug, 'error', hostedSite);
     }
   },
 };

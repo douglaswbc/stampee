@@ -1,14 +1,18 @@
 import { spawn } from 'node:child_process';
 import { loadEnv } from 'vite';
 
-// Forward only server-side app settings to local Vercel Functions. In particular,
-// do not pass personal CLI tokens from .env files to the function runtime.
+// Forward app settings to local Vercel Functions. In particular, do not pass
+// personal CLI tokens from .env files to the function runtime.
 const localEnv = loadEnv('development', process.cwd(), '');
 const serverEnvNames = [
   'SUPABASE_URL',
   'SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
+  'VITE_APP_URL',
   'APP_ORIGIN',
+  'VERCEL_ACCESS_TOKEN',
+  'VERCEL_PROJECT_ID',
+  'VERCEL_TEAM_ID',
   'ZERNIO_ENCRYPTION_KEY',
   'COMMUNICATIONS_CRON_SECRET',
   'CRON_SECRET',

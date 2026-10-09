@@ -120,7 +120,7 @@ O painel em `/settings?tab=communications` conecta canais, lista variantes Whats
 
 ### Implantação do worker
 
-O endpoint server-side é `/api/zernio-worker` e exige `COMMUNICATIONS_CRON_SECRET` (ou `CRON_SECRET`) com ao menos 16 caracteres. A função lê a outbox, verifica consentimento e template atual, envia usando `Idempotency-Key` estável e registra o resultado. O projeto ainda não agenda essa rota em `vercel.json`: no plano Hobby da Vercel, cron só pode executar uma vez ao dia; notificações de fidelidade precisam de execução frequente. Configure um cron em plano compatível ou um scheduler externo antes de habilitar envios em produção.
+O endpoint server-side é `/api/zernio-worker` e exige `COMMUNICATIONS_CRON_SECRET` (ou `CRON_SECRET`) com ao menos 16 caracteres. A função lê a outbox, verifica consentimento e template atual, envia usando `Idempotency-Key` estável e registra o resultado. O `vercel.ts` agenda essa rota uma vez ao dia; notificações de fidelidade que precisem rodar com mais frequência exigem um plano/agendador compatível antes de habilitar envios em produção.
 
 Variáveis server-only necessárias: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ZERNIO_ENCRYPTION_KEY` e `COMMUNICATIONS_CRON_SECRET`/`CRON_SECRET`. Nunca use prefixo `VITE_` para secrets. Para o callback OAuth, configure `APP_ORIGIN` como a origem canônica do app.
 

@@ -18,7 +18,7 @@ Owners can register a business at `/signup` and sign in at `/login`. Each owner 
 - React Router
 - Supabase Auth, Postgres, Storage, and RPC functions
 - Vercel Analytics
-- Vercel deployment config via [`vercel.json`](vercel.json)
+- Vercel deployment config via [`vercel.ts`](vercel.ts)
 
 ## Prerequisites
 
@@ -67,6 +67,7 @@ Owners can register a business at `/signup` and sign in at `/login`. Each owner 
    - For an existing project, also run [`supabase/legacy-patches/add_company_locale_preferences.sql`](supabase/legacy-patches/add_company_locale_preferences.sql) to persist the company's interface language and currency preferences.
    - To persist the company's time zone, run [`supabase/legacy-patches/add_company_time_zone.sql`](supabase/legacy-patches/add_company_time_zone.sql) before deploying the time zone settings. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_company_time_zone.sql`.
    - For the institutional website module, apply [`supabase/legacy-patches/add_business_sites.sql`](supabase/legacy-patches/add_business_sites.sql) before deploying. It adds tenant-scoped drafts, publication history, and public read RPCs. Configure `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `APP_ORIGIN` in Vercel; see [the website module plan](docs/sites-institucionais.md) for sitemap and routing details.
+   - To enable the business custom-domain menu, apply [`supabase/legacy-patches/add_business_site_domains.sql`](supabase/legacy-patches/add_business_site_domains.sql), set the server-only Vercel API credentials from `.env.example`, and add the wildcard for the `VITE_APP_URL` host (currently `*.stampee.co`) to the Vercel project. Follow the [custom-domain setup guide](docs/business-site-domains.md).
    - Run `npm run dev:vercel` to exercise local `api/*.ts` functions. The regular `npm run dev` command starts Vite only and does not serve those API routes. The command forwards the required server-side settings from ignored root `.env` files without forwarding personal CLI tokens.
    - For welcome points and customer referrals, run [`supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`](supabase/legacy-patches/add_customer_welcome_and_referral_points.sql) after the points and reward catalog patches. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/add_customer_welcome_and_referral_points.sql`.
    - If revoking a card fails with the `loyalty_points_entry_shape` constraint, apply [`supabase/legacy-patches/fix_loyalty_points_card_revocation.sql`](supabase/legacy-patches/fix_loyalty_points_card_revocation.sql) after the customer welcome/referral points patch. It preserves the points audit history when the card's transaction rows are removed. Apply it without Docker with `npx supabase db query --linked --file supabase/legacy-patches/fix_loyalty_points_card_revocation.sql`.
@@ -128,7 +129,7 @@ You can deploy the app anywhere that serves a Vite SPA, including Vercel.
 
 1. Add the same `VITE_...` environment variables to your deployment platform.
 2. If you use Vercel, you can optionally enable Vercel Web Analytics.
-3. [`vercel.json`](vercel.json) already rewrites client-side routes to `index.html`.
+3. [`vercel.ts`](vercel.ts) already rewrites client-side routes to `index.html`.
 4. Make sure your Supabase project has already been initialized with [`supabase/migration.sql`](supabase/migration.sql).
 
 ## Contributing

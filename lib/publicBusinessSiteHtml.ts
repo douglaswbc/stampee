@@ -74,8 +74,9 @@ const paragraphs = (value: string, className = '') => value
   .map((paragraph) => `<p${className ? ` class="${className}"` : ''}>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
   .join('');
 
-const itemPath = (site: PublicBusinessSite, item: BusinessSiteItem) => `/empresa/${site.slug}/${item.kind}/${item.slug}`;
-const pagePath = (site: PublicBusinessSite, page: BusinessSitePage) => `/empresa/${site.slug}/${page.slug}`;
+const sitePath = (basePath: string, suffix = '') => `${basePath}${suffix ? `/${suffix.replace(/^\/+/, '')}` : ''}` || '/';
+const itemPath = (site: PublicBusinessSite, item: BusinessSiteItem, basePath = `/empresa/${site.slug}`) => sitePath(basePath, `${item.kind}/${item.slug}`);
+const pagePath = (site: PublicBusinessSite, page: BusinessSitePage, basePath = `/empresa/${site.slug}`) => sitePath(basePath, page.slug);
 
 const renderImage = (url: string, alt: string, base: string, className: string, eager = false) => {
   const src = safeImageUrl(url, base);
@@ -83,22 +84,22 @@ const renderImage = (url: string, alt: string, base: string, className: string, 
   return `<img class="${className}" src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" ${eager ? 'fetchpriority="high"' : 'loading="lazy"'} decoding="async">`;
 };
 
-const renderItemCard = (site: PublicBusinessSite, item: BusinessSiteItem, base: string, labels: typeof copy['en']) => `
+const renderItemCard = (site: PublicBusinessSite, item: BusinessSiteItem, base: string, labels: typeof copy['en'], basePath = `/empresa/${site.slug}`) => `
   <article class="item-card">
-    <a class="item-card__image-link" href="${escapeHtml(itemPath(site, item))}" aria-label="${escapeHtml(item.name)}">
+    <a class="item-card__image-link" href="${escapeHtml(itemPath(site, item, basePath))}" aria-label="${escapeHtml(item.name)}">
       ${renderImage(item.imageUrl, item.name, base, 'item-card__image') || '<span class="item-card__image item-card__placeholder" aria-hidden="true"></span>'}
     </a>
     <div class="item-card__body">
       ${item.category ? `<p class="eyebrow">${escapeHtml(item.category)}</p>` : ''}
-      <h3><a href="${escapeHtml(itemPath(site, item))}">${escapeHtml(item.name)}</a></h3>
+      <h3><a href="${escapeHtml(itemPath(site, item, basePath))}">${escapeHtml(item.name)}</a></h3>
       ${item.summary ? `<p>${escapeHtml(item.summary)}</p>` : ''}
       ${item.priceLabel ? `<p class="item-card__price">${escapeHtml(item.priceLabel)}</p>` : ''}
-      <a class="text-link" href="${escapeHtml(itemPath(site, item))}">${labels.more}<span aria-hidden="true"> →</span></a>
+      <a class="text-link" href="${escapeHtml(itemPath(site, item, basePath))}">${labels.more}<span aria-hidden="true"> →</span></a>
     </div>
   </article>`;
 
-const renderDirectory = (site: PublicBusinessSite, base: string, labels: typeof copy['en'], items = site.content.items.filter((item) => item.enabled)) => `
-  <div class="item-grid">${items.map((item) => renderItemCard(site, item, base, labels)).join('')}</div>`;
+const renderDirectory = (site: PublicBusinessSite, base: string, labels: typeof copy['en'], items = site.content.items.filter((item) => item.enabled), basePath = `/empresa/${site.slug}`) => `
+  <div class="item-grid">${items.map((item) => renderItemCard(site, item, base, labels, basePath)).join('')}</div>`;
 
 const renderContact = (site: PublicBusinessSite, labels: typeof copy['en']) => {
   const contact = site.content.contact;
@@ -121,10 +122,10 @@ const renderContact = (site: PublicBusinessSite, labels: typeof copy['en']) => {
   </div>`;
 };
 
-const renderContactForm = (site: PublicBusinessSite, labels: typeof copy['en']) => {
+const renderContactForm = (site: PublicBusinessSite, labels: typeof copy['en'], basePath = `/empresa/${site.slug}`) => {
   const privacyPage = site.content.pages.find((page) => page.kind === 'privacy' && page.enabled);
   const privacyLink = privacyPage
-    ? ` <a href="${escapeHtml(pagePath(site, privacyPage))}">${labels.privacy}</a>`
+    ? ` <a href="${escapeHtml(pagePath(site, privacyPage, basePath))}">${labels.privacy}</a>`
     : '';
   return `<section class="contact-form-section" aria-labelledby="contact-form-title">
     <h2 id="contact-form-title">${labels.contactCta}</h2>
@@ -167,9 +168,10 @@ const buildJsonLd = (
   title: string,
   description: string,
   resolved: ReturnType<typeof resolvePage>,
+  basePath: string,
 ) => {
   const contact = site.content.contact;
-  const businessUrl = `${origin}/empresa/${site.slug}`;
+  const businessUrl = basePath ? `${origin}${basePath}` : origin;
   const hasContactDetails = Boolean(contact.email || contact.phone || contact.whatsapp || contact.address || contact.openingHours || contact.serviceArea || contact.googleBusinessUrl || contact.instagramUrl || contact.facebookUrl);
   const contactVisible = (resolved.kind === 'page' && resolved.page?.kind === 'contact')
     || (resolved.kind === 'home' && hasContactDetails);
@@ -228,9 +230,9 @@ const buildJsonLd = (
     const image = safeImageUrl(item.imageUrl, origin);
     graph.push({
       '@type': item.kind === 'product' ? 'Product' : 'Service',
-      '@id': `${origin}${itemPath(site, item)}#item`,
+      '@id': `${origin}${itemPath(site, item, basePath)}#item`,
       name: item.name,
-      url: `${origin}${itemPath(site, item)}`,
+      url: `${origin}${itemPath(site, item, basePath)}`,
       ...(item.summary || item.description ? { description: item.summary || item.description } : {}),
       ...(item.category ? { category: item.category } : {}),
       ...(image ? { image } : {}),
@@ -251,7 +253,7 @@ const buildJsonLd = (
     if (resolved.item.category && resolved.item.categorySlug) {
       breadcrumbs.push({ name: resolved.item.category, url: `${businessUrl}/categoria/${encodeURIComponent(resolved.item.categorySlug)}` });
     }
-    breadcrumbs.push({ name: resolved.item.name, url: `${origin}${itemPath(site, resolved.item)}` });
+    breadcrumbs.push({ name: resolved.item.name, url: `${origin}${itemPath(site, resolved.item, basePath)}` });
   }
   if (breadcrumbs.length > 1) {
     graph.push({
@@ -268,7 +270,7 @@ const buildJsonLd = (
   return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph }).replace(/</g, '\\u003c');
 };
 
-const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolvePage>, origin: string, labels: typeof copy['en']) => {
+const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolvePage>, origin: string, labels: typeof copy['en'], basePath: string) => {
   const { content } = site;
   if (resolved.kind === 'home') {
     const featured = content.items.filter((item) => item.enabled && item.featured).slice(0, 6);
@@ -277,26 +279,26 @@ const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolveP
         ${content.hero.eyebrow ? `<p class="eyebrow">${escapeHtml(content.hero.eyebrow)}</p>` : ''}
         <h1>${escapeHtml(content.hero.title || site.businessName)}</h1>
         ${paragraphs(content.hero.description, 'hero__copy')}
-        ${content.hero.ctaLabel ? `<a class="button button--primary" href="${escapeHtml(safeUrl(content.hero.ctaUrl, `${origin}/empresa/${site.slug}/contato`) || `${origin}/empresa/${site.slug}/contato`)}">${escapeHtml(content.hero.ctaLabel)}<span aria-hidden="true"> →</span></a>` : ''}
+        ${content.hero.ctaLabel ? `<a class="button button--primary" href="${escapeHtml(safeUrl(content.hero.ctaUrl, `${origin}${sitePath(basePath, 'contato')}`) || sitePath(basePath, 'contato'))}">${escapeHtml(content.hero.ctaLabel)}<span aria-hidden="true"> →</span></a>` : ''}
       </div>
     </section>
     ${content.about.body ? `<section class="section section--narrow"><p class="eyebrow">${labels.about}</p><h2>${escapeHtml(content.about.title)}</h2>${paragraphs(content.about.body)}</section>` : ''}
-    ${featured.length ? `<section class="section section--soft"><div class="section-heading"><div><p class="eyebrow">${labels.featured}</p><h2>${labels.directory}</h2></div><a class="text-link" href="/empresa/${site.slug}/produtos-servicos">${labels.seeAll} →</a></div>${renderDirectory(site, origin, labels, featured)}</section>` : ''}
+    ${featured.length ? `<section class="section section--soft"><div class="section-heading"><div><p class="eyebrow">${labels.featured}</p><h2>${labels.directory}</h2></div><a class="text-link" href="${sitePath(basePath, 'produtos-servicos')}">${labels.seeAll} →</a></div>${renderDirectory(site, origin, labels, featured, basePath)}</section>` : ''}
     ${(content.contact.phone || content.contact.email || content.contact.whatsapp || content.contact.address || content.contact.openingHours || content.contact.serviceArea || content.contact.googleBusinessUrl || content.contact.instagramUrl || content.contact.facebookUrl) ? `<section class="section section--narrow section--contact"><h2>${labels.contactCta}</h2>${renderContact(site, labels)}</section>` : ''}`;
   }
   if (resolved.kind === 'directory') {
     const items = content.items.filter((item) => item.enabled);
     const categories = [...new Map(items.filter((item) => item.category && item.categorySlug).map((item) => [item.categorySlug, item.category])).entries()];
-    const categoryLinks = categories.length ? `<nav class="category-nav" aria-label="${labels.category}">${categories.map(([slug, name]) => `<a href="/empresa/${site.slug}/categoria/${escapeHtml(slug)}">${escapeHtml(name)}</a>`).join('')}</nav>` : '';
-    return `<section class="section"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.directory}</h1>${categoryLinks}${items.length ? renderDirectory(site, origin, labels, items) : `<p>${escapeHtml(content.about.body || site.businessName)}</p>`}</section>`;
+    const categoryLinks = categories.length ? `<nav class="category-nav" aria-label="${labels.category}">${categories.map(([slug, name]) => `<a href="${sitePath(basePath, `categoria/${slug}`)}">${escapeHtml(name)}</a>`).join('')}</nav>` : '';
+    return `<section class="section"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.directory}</h1>${categoryLinks}${items.length ? renderDirectory(site, origin, labels, items, basePath) : `<p>${escapeHtml(content.about.body || site.businessName)}</p>`}</section>`;
   }
   if (resolved.kind === 'category') {
-    return `<section class="section"><p class="eyebrow">${escapeHtml(site.businessName)} · ${labels.category}</p><h1>${escapeHtml(resolved.categoryName || labels.directory)}</h1>${renderDirectory(site, origin, labels, resolved.categoryItems)}</section>`;
+    return `<section class="section"><p class="eyebrow">${escapeHtml(site.businessName)} · ${labels.category}</p><h1>${escapeHtml(resolved.categoryName || labels.directory)}</h1>${renderDirectory(site, origin, labels, resolved.categoryItems, basePath)}</section>`;
   }
   if (resolved.kind === 'page' && resolved.page) {
     const page = resolved.page;
     if (page.kind === 'contact') {
-      return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${page.body ? paragraphs(page.body) : ''}${renderContact(site, labels)}${renderContactForm(site, labels)}</section>`;
+      return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${page.body ? paragraphs(page.body) : ''}${renderContact(site, labels)}${renderContactForm(site, labels, basePath)}</section>`;
     }
     if (page.kind === 'about') {
       return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title || content.about.title)}</h1>${paragraphs(page.body || content.about.body)}</section>`;
@@ -305,7 +307,7 @@ const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolveP
     const body = page.kind === 'faq'
       ? page.body.split(/\n+/).map((line) => line.trim()).filter(Boolean).map((line) => `<details class="faq-item"><summary>${escapeHtml(line.split('?')[0] + (line.includes('?') ? '?' : ''))}</summary><p>${escapeHtml(line.includes('?') ? line.slice(line.indexOf('?') + 1).trim() : '')}</p></details>`).join('')
       : paragraphs(page.body);
-    return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${body}${featured.length ? `<div class="item-grid item-grid--featured">${featured.map((item) => renderItemCard(site, item, origin, labels)).join('')}</div>` : ''}</section>`;
+    return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${escapeHtml(page.title)}</h1>${body}${featured.length ? `<div class="item-grid item-grid--featured">${featured.map((item) => renderItemCard(site, item, origin, labels, basePath)).join('')}</div>` : ''}</section>`;
   }
   if (resolved.kind === 'item' && resolved.item) {
     const item = resolved.item;
@@ -320,16 +322,16 @@ const pageBody = (site: PublicBusinessSite, resolved: ReturnType<typeof resolveP
       ${item.category ? `<p class="eyebrow">${escapeHtml(item.category)}</p>` : ''}<h1>${escapeHtml(item.name)}</h1>${item.summary ? `<p class="item-detail__summary">${escapeHtml(item.summary)}</p>` : ''}${paragraphs(item.description)}
       <dl class="item-facts">${item.priceLabel ? `<div><dt>${labels.price}</dt><dd>${escapeHtml(item.priceLabel)}</dd></div>` : ''}${item.duration ? `<div><dt>${labels.duration}</dt><dd>${escapeHtml(item.duration)}</dd></div>` : ''}${item.areaServed || content.contact.serviceArea ? `<div><dt>${labels.area}</dt><dd>${escapeHtml(item.areaServed || content.contact.serviceArea)}</dd></div>` : ''}</dl>
       ${contactUrl ? `<a class="button button--primary" href="${escapeHtml(contactUrl)}" rel="${contactUrl.startsWith('http') ? 'noopener noreferrer' : ''}">${escapeHtml(item.ctaLabel || labels.contactCta)}<span aria-hidden="true"> →</span></a>` : ''}
-      </div></div>${otherItems.length ? `<section class="section section--related"><h2>${labels.featured}</h2>${renderDirectory(site, origin, labels, otherItems)}</section>` : ''}</article>`;
+      </div></div>${otherItems.length ? `<section class="section section--related"><h2>${labels.featured}</h2>${renderDirectory(site, origin, labels, otherItems, basePath)}</section>` : ''}</article>`;
   }
-  return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="/empresa/${site.slug}">${labels.backHome}</a></section>`;
+  return `<section class="section section--narrow"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="${sitePath(basePath)}">${labels.backHome}</a></section>`;
 };
 
 export const renderPublicBusinessSiteHtml = (
   site: PublicBusinessSite,
   route: string,
   origin: string,
-  options: { preview?: boolean; leadState?: string | null } = {},
+  options: { preview?: boolean; leadState?: string | null; basePath?: string; platformOrigin?: string } = {},
 ): { html: string; status: number; cacheTag: string } => {
   const content = site.content;
   const lang = content.seo.language || 'pt-BR';
@@ -338,7 +340,9 @@ export const renderPublicBusinessSiteHtml = (
   const exists = resolved.kind !== 'missing' && (resolved.kind !== 'item' || Boolean(resolved.item));
   const selectedPage = resolved.page;
   const selectedItem = resolved.item;
-  const canonicalPath = `/empresa/${site.slug}${resolved.route ? `/${resolved.route}` : ''}`;
+  const basePath = options.basePath === undefined ? `/empresa/${site.slug}` : options.basePath;
+  const platformOrigin = options.platformOrigin || origin;
+  const canonicalPath = sitePath(basePath, resolved.route);
   const canonical = `${origin}${canonicalPath}`;
   const pageTitle = resolved.kind === 'directory' ? labels.directory : resolved.kind === 'category' ? resolved.categoryName : '';
   const title = (selectedItem?.metaTitle || selectedPage?.metaTitle || (resolved.kind === 'home' ? content.seo.title || content.hero.title : selectedItem?.name || selectedPage?.title || pageTitle) || site.businessName).trim();
@@ -353,13 +357,13 @@ export const renderPublicBusinessSiteHtml = (
   const leadNotice = resolved.kind === 'page' && resolved.page?.kind === 'contact' && options.leadState
     ? `<p class="form-notice" role="status" aria-live="polite">${options.leadState === 'success' ? labels.contactSuccess : options.leadState === 'rate-limited' ? labels.contactRateLimited : labels.contactError}</p>`
     : '';
-  const body = `${pageBody(site, resolved, origin, labels)}${leadNotice}`;
+  const body = `${pageBody(site, resolved, origin, labels, basePath)}${leadNotice}`;
   const primaryColor = safeColor(content.branding.primaryColor, '#1d4ed8');
   const accentColor = safeColor(content.branding.accentColor, '#f59e0b');
-  const jsonLd = exists ? buildJsonLd(site, origin, canonical, title, description, resolved) : '';
+  const jsonLd = exists ? buildJsonLd(site, origin, canonical, title, description, resolved, basePath) : '';
   const navPages = content.pages.filter((page) => page.enabled && page.showInNavigation);
-  const dirLink = content.items.some((item) => item.enabled) ? `<a href="/empresa/${site.slug}/produtos-servicos">${labels.directory}</a>` : '';
-  const nav = [`<a href="/empresa/${site.slug}">${labels.home}</a>`, dirLink, ...navPages.map((page) => `<a href="${escapeHtml(pagePath(site, page))}">${escapeHtml(page.title)}</a>`)].filter(Boolean).join('');
+  const dirLink = content.items.some((item) => item.enabled) ? `<a href="${sitePath(basePath, 'produtos-servicos')}">${labels.directory}</a>` : '';
+  const nav = [`<a href="${sitePath(basePath)}">${labels.home}</a>`, dirLink, ...navPages.map((page) => `<a href="${escapeHtml(pagePath(site, page, basePath))}">${escapeHtml(page.title)}</a>`)].filter(Boolean).join('');
   const image = selectedItem?.imageUrl || (resolved.kind === 'home' ? content.hero.imageUrl : '');
   const ogImage = safeImageUrl(image || content.branding.logoUrl, origin);
   const schema = jsonLd ? `<script type="application/ld+json">${jsonLd}</script>` : '';
@@ -380,9 +384,9 @@ ${schema}
 </style>
 </head>
 <body>${options.preview ? `<div style="position:sticky;top:0;z-index:5;padding:10px 16px;background:#111827;color:white;text-align:center;font:600 13px/1.4 system-ui">PREVIEW — <a style="color:white" href="/site">${escapeHtml(lang === 'pt-BR' ? 'Voltar ao editor do site' : lang === 'es' ? 'Volver al editor del sitio' : 'Back to site editor')}</a></div>` : ''}<div class="site-shell">
-<header class="site-header"><div class="site-header__inner"><a class="brand" href="/empresa/${site.slug}">${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(site.businessName)}">` : escapeHtml(site.businessName)}</a><nav class="site-nav" aria-label="${lang === 'pt-BR' ? 'Navegação principal' : lang === 'es' ? 'Navegación principal' : 'Main navigation'}">${nav}</nav></div></header>
-<main>${exists ? body : `<section class="section section--narrow not-found"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="/empresa/${site.slug}">${labels.backHome}</a></section>`}</main>
-<footer class="site-footer"><div class="site-footer__inner"><span>© ${new Date().getUTCFullYear()} ${escapeHtml(site.businessName)}</span><nav class="site-footer__links" aria-label="${labels.privacy}">${content.pages.filter((page) => page.enabled && page.kind === 'privacy').map((page) => `<a href="${escapeHtml(pagePath(site, page))}">${escapeHtml(page.title || labels.privacy)}</a>`).join('')}<a href="${origin}">${escapeHtml('Stampfy')}</a></nav></div></footer>
+<header class="site-header"><div class="site-header__inner"><a class="brand" href="${sitePath(basePath)}">${logo ? `<img src="${escapeHtml(logo)}" alt="${escapeHtml(site.businessName)}">` : escapeHtml(site.businessName)}</a><nav class="site-nav" aria-label="${lang === 'pt-BR' ? 'Navegação principal' : lang === 'es' ? 'Navegación principal' : 'Main navigation'}">${nav}</nav></div></header>
+<main>${exists ? body : `<section class="section section--narrow not-found"><p class="eyebrow">${escapeHtml(site.businessName)}</p><h1>${labels.notFound}</h1><p>${labels.notFoundCopy}</p><a class="button button--primary" href="${sitePath(basePath)}">${labels.backHome}</a></section>`}</main>
+<footer class="site-footer"><div class="site-footer__inner"><span>© ${new Date().getUTCFullYear()} ${escapeHtml(site.businessName)}</span><nav class="site-footer__links" aria-label="${labels.privacy}">${content.pages.filter((page) => page.enabled && page.kind === 'privacy').map((page) => `<a href="${escapeHtml(pagePath(site, page, basePath))}">${escapeHtml(page.title || labels.privacy)}</a>`).join('')}<a href="${escapeHtml(platformOrigin)}">${escapeHtml('Stampfy')}</a></nav></div></footer>
 </div></body></html>`;
 
   return { html, status: exists ? 200 : 404, cacheTag: `business-site-${site.slug}-${site.revision}` };

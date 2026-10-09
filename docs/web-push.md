@@ -44,7 +44,7 @@ Depois de configurar a chave pública, gerar novamente o build/deploy do fronten
 
 O endpoint é `GET /api/customer-push-worker`. O agendador deve enviar `Authorization: Bearer <secret>`. Use `CRON_SECRET` para que a Vercel inclua o cabeçalho automaticamente; um agendador externo também pode usar `PUSH_CRON_SECRET` ou reaproveitar `COMMUNICATIONS_CRON_SECRET`. O worker processa lotes idempotentes e pode ser invocado mais de uma vez.
 
-O repositório não fixa uma frequência no `vercel.json`, pois o intervalo permitido depende do plano da Vercel. Na data desta implementação, o plano Hobby aceita no máximo uma execução diária e com precisão de hora; notificações transacionais próximas do evento exigem um plano/agendador que execute com frequência maior. Escolha uma frequência compatível antes de habilitar em produção.
+O `vercel.ts` agenda o worker uma vez ao dia. A frequência permitida depende do plano da Vercel; notificações transacionais próximas do evento exigem um plano/agendador que execute com frequência maior. Escolha uma frequência compatível antes de habilitar em produção.
 
 Localmente, configurar `.env` com as variáveis acima e usar `npm run dev:vercel`, que encaminha os segredos ao runtime das funções locais sem expô-los ao bundle do browser.
 

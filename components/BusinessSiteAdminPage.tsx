@@ -20,6 +20,14 @@ import {
   type BusinessSiteLead,
   type BusinessSiteLeadStatus,
 } from '../lib/db/businessSites';
+import {
+  connectBusinessSiteDomain,
+  fetchBusinessSiteDomain,
+  removeBusinessSiteDomain,
+  verifyBusinessSiteDomain,
+  type BusinessSiteDomain,
+} from '../lib/db/businessSiteDomains';
+import { BUSINESS_SITE_DOMAIN } from '../lib/siteConfig';
 import { normalizeSlug } from '../lib/slug';
 import {
   fetchBusinessSiteDraft,
@@ -28,7 +36,7 @@ import {
   saveBusinessSiteDraft,
 } from '../lib/db/businessSites';
 
-type Section = 'overview' | 'pages' | 'catalog' | 'leads' | 'seo' | 'history';
+type Section = 'overview' | 'pages' | 'catalog' | 'leads' | 'domain' | 'seo' | 'history';
 type ObjectSection = 'branding' | 'hero' | 'about' | 'contact' | 'seo';
 
 const sections: { id: Section; label: string }[] = [
@@ -36,6 +44,7 @@ const sections: { id: Section; label: string }[] = [
   { id: 'pages', label: 'Pages' },
   { id: 'catalog', label: 'Products and services' },
   { id: 'leads', label: 'Leads' },
+  { id: 'domain', label: 'Custom domain' },
   { id: 'seo', label: 'SEO and local presence' },
   { id: 'history', label: 'Publication history' },
 ];
@@ -186,6 +195,12 @@ export const BusinessSiteAdminPage: React.FC = () => {
   const [leads, setLeads] = useState<BusinessSiteLead[]>([]);
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsError, setLeadsError] = useState('');
+  const [businessDomain, setBusinessDomain] = useState<BusinessSiteDomain | null>(null);
+  const [domainInput, setDomainInput] = useState('');
+  const [domainLoading, setDomainLoading] = useState(false);
+  const [domainBusy, setDomainBusy] = useState(false);
+  const [domainError, setDomainError] = useState('');
+  const [domainMessage, setDomainMessage] = useState('');
   const postalCodeLookupRequestId = useRef(0);
   const postalCodeLookupController = useRef<AbortController | null>(null);
 
@@ -222,8 +237,45 @@ export const BusinessSiteAdminPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [section, t]);
 
+  useEffect(() => {
+    let cancelled = false;
+    setDomainLoading(true);
+    setDomainError('');
+    void fetchBusinessSiteDomain().then((result) => {
+      if (cancelled) return;
+      setBusinessDomain(result.data);
+      setDomainError(result.error ? t(result.error) : '');
+      setDomainLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [t]);
+
   const hasChanges = useMemo(() => Boolean(site && draft && JSON.stringify(site.draftContent) !== JSON.stringify(draft)), [site, draft]);
-  const publicUrl = site?.slug ? `${window.location.origin}/empresa/${site.slug}` : '';
+  const legacyPublicUrl = site?.slug ? `${window.location.origin}/empresa/${site.slug}` : '';
+  const sharedSiteUrl = site?.slug ? `https://${site.slug}.${BUSINESS_SITE_DOMAIN}` : '';
+  const publicUrl = businessDomain?.status === 'active'
+    ? `https://${businessDomain.primary_domain}`
+    : sharedSiteUrl || legacyPublicUrl;
+
+  const handleDomainAction = async (action: 'connect' | 'verify' | 'remove') => {
+    setDomainBusy(true);
+    setDomainError('');
+    setDomainMessage('');
+    const result = action === 'connect'
+      ? await connectBusinessSiteDomain(domainInput)
+      : action === 'verify'
+        ? await verifyBusinessSiteDomain()
+        : await removeBusinessSiteDomain();
+    setDomainBusy(false);
+    if (result.error) {
+      setDomainError(t(result.error));
+      return;
+    }
+    const response = result.data;
+    setBusinessDomain(response?.domain ?? null);
+    setDomainMessage(response?.message ? t(response.message) : '');
+    if (action === 'connect') setDomainInput('');
+  };
 
   const setObjectField = <K extends ObjectSection>(key: K, field: keyof BusinessSiteContent[K], value: unknown) => {
     setDraft((current) => current ? ({
@@ -701,6 +753,73 @@ export const BusinessSiteAdminPage: React.FC = () => {
         </div>
       )}
 
+      {section === 'domain' && (
+        <Card><CardContent className="space-y-5 p-4 sm:p-6">
+          <div>
+            <h2 className="text-xl font-semibold">{t('Custom domain')}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t('Connect a domain you own. Stampfy uses www as the main address and redirects the root domain to it.')}</p>
+          </div>
+          {domainError && <p role="alert" className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">{domainError}</p>}
+          {domainMessage && <p role="status" className="rounded-lg border border-emerald-600/20 bg-emerald-600/5 px-4 py-3 text-sm text-emerald-800">{domainMessage}</p>}
+          {domainLoading ? <p className="text-sm text-muted-foreground">{t('Loading domain settings...')}</p> : !businessDomain ? (
+            <div className="space-y-4 rounded-xl border border-border/70 bg-muted/20 p-4 sm:p-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="business-custom-domain">{t('Domain you own')}</Label>
+                <Input id="business-custom-domain" value={domainInput} onChange={(event) => setDomainInput(event.target.value)} placeholder="sualoja.com.br" inputMode="url" autoCapitalize="none" autoCorrect="off" />
+                <p className="text-xs text-muted-foreground">{t('Enter the root domain, for example example.com.br. We will set www as the main address.')}</p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground">{t('The Stampfy subdomain remains available as a fallback.')}: <span className="break-all font-medium">{sharedSiteUrl}</span></p>
+                <Button type="button" className="w-full sm:w-auto" onClick={() => void handleDomainAction('connect')} disabled={domainBusy || !domainInput.trim() || !site.publishedAt}>
+                  <Globe2 className="mr-2 h-4 w-4" />{domainBusy ? t('Connecting...') : t('Connect domain')}
+                </Button>
+              </div>
+              {!site.publishedAt && <p className="text-sm text-amber-700">{t('Publish the business site before connecting a custom domain.')}</p>}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="flex flex-col gap-3 rounded-xl border border-border/70 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div className="min-w-0">
+                  <p className="break-all text-lg font-semibold">https://{businessDomain.primary_domain}</p>
+                  <p className="mt-1 break-all text-sm text-muted-foreground">{t('Root domain redirects to www')}: {businessDomain.apex_domain}</p>
+                </div>
+                <Badge variant={businessDomain.status === 'active' ? 'default' : 'secondary'} className="w-fit shrink-0">
+                  {businessDomain.status === 'active' ? t('Connected') : t('Waiting for DNS')}
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                <h3 className="font-semibold">{t('DNS records')}</h3>
+                <p className="text-sm text-muted-foreground">{t('Add these records at the company where your domain DNS is managed. Keep any existing MX records for email.')}</p>
+                {([
+                  { key: 'primary', label: t('Main address (www)'), records: businessDomain.dns_records?.primary || [] },
+                  { key: 'apex', label: t('Root address (redirects to www)'), records: businessDomain.dns_records?.apex || [] },
+                ] as const).map((group) => (
+                  <div key={group.key} className="space-y-2 rounded-xl border border-border/70 p-3 sm:p-4">
+                    <h4 className="text-sm font-semibold">{group.label}</h4>
+                    {group.records.length ? group.records.map((record, index) => (
+                      <div key={`${record.host}-${record.type}-${index}`} className="grid gap-1 rounded-lg bg-muted/40 p-3 text-sm sm:grid-cols-[minmax(90px,0.7fr)_minmax(70px,0.4fr)_minmax(0,2fr)] sm:items-start sm:gap-3">
+                        <span className="break-all font-medium">{record.host}</span><span>{record.type}</span><span className="break-all font-mono text-xs">{record.value}</span>
+                      </div>
+                    )) : <p className="text-sm text-muted-foreground">{t('Vercel has not returned DNS records for this address yet.')}</p>}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                <Button type="button" className="w-full sm:w-auto" onClick={() => void handleDomainAction('verify')} disabled={domainBusy}>
+                  <CheckCircle2 className="mr-2 h-4 w-4" />{domainBusy ? t('Checking...') : t('Check DNS connection')}
+                </Button>
+                <Button type="button" variant="outline" className="w-full text-destructive sm:w-auto" onClick={() => {
+                  if (window.confirm(t('Remove this custom domain from the business site?'))) void handleDomainAction('remove');
+                }} disabled={domainBusy}>
+                  <Trash2 className="mr-2 h-4 w-4" />{t('Remove domain')}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('The Stampfy subdomain remains available as a fallback.')}: <span className="break-all font-medium">{sharedSiteUrl}</span></p>
+            </div>
+          )}
+        </CardContent></Card>
+      )}
+
       {section === 'seo' && (
         <div className="grid gap-5 xl:grid-cols-2">
           <Card><CardContent className="space-y-4 p-4 sm:p-6">
@@ -720,7 +839,7 @@ export const BusinessSiteAdminPage: React.FC = () => {
             <p className="text-xs text-muted-foreground">{t('Draft and preview pages are never included in the public sitemap.')}</p>
           </CardContent></Card>
           <Card><CardContent className="space-y-4 p-4 sm:p-6">
-            <div><h2 className="text-lg font-semibold">{t('Public address')}</h2><p className="text-sm text-muted-foreground">{t('Your site uses the Stampfy shared domain. Custom domains are planned for a later phase.')}</p></div>
+            <div><h2 className="text-lg font-semibold">{t('Public address')}</h2><p className="text-sm text-muted-foreground">{t('This is the public address of your business site.')}</p></div>
             <InputField label={t('Business site URL')} value={publicUrl} onChange={() => undefined} readOnly />
             <p className="text-xs text-muted-foreground">{t('The address uses your existing business slug and does not replace campaign or loyalty card links.')}</p>
           </CardContent></Card>

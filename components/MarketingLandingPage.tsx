@@ -178,7 +178,7 @@ const MarketingLandingPage: React.FC = () => (
       <div className="pricing-copy"><span className="marketing-eyebrow">Um plano para o seu negócio</span><h2 id="pricing-title">Fidelidade e site<br />do seu comércio.</h2><div className="pricing-options">
         <article className="pricing-option"><span className="pricing-period">Mensal</span><div className="pricing-value" aria-label="87 reais por mês"><strong>R$ 87,00</strong><span>/ mês</span></div></article>
         <article className="pricing-option pricing-option-featured"><div className="pricing-period-row"><span className="pricing-period">Anual</span><span className="pricing-badge">2 meses grátis</span></div><div className="pricing-value" aria-label="870 reais por ano"><strong>R$ 870,00</strong><span>/ ano</span></div><p>Pague o equivalente a 10 mensalidades e tenha 12 meses de acesso. Equivale a R$ 72,50 por mês.</p></article>
-      </div><p>Os planos incluem as ferramentas de fidelidade do Stampfy e a criação do site do seu comércio. Você pode usar o endereço Stampfy ou apontar um domínio próprio, cuja configuração já está disponível.</p></div>
+      </div><p>Os planos incluem as ferramentas de fidelidade do Stampfy e a criação do site do seu comércio. Você pode usar o endereço Stampfy ou apontar um domínio próprio.</p></div>
       <div className="pricing-actions"><a className="marketing-button" href="/signup" onClick={() => trackCta('conditions')}>Acessar cadastro <ArrowRight size={18} /></a><a className="marketing-text-link" href={consultantHref} target="_blank" rel="noreferrer"><MessageCircle size={16} /> Falar com consultor <ArrowRight size={16} /></a></div>
     </section>
 
