@@ -103,6 +103,7 @@ const MissionsPage = lazy(() => import('./components/MissionsPage').then((module
 const MissionProgressList = lazy(() => import('./components/MissionProgressList').then((module) => ({ default: module.MissionProgressList })));
 const RewardsCatalogPage = lazy(() => import('./components/RewardsCatalogPage').then((module) => ({ default: module.RewardsCatalogPage })));
 const RewardRedemptionsPage = lazy(() => import('./components/RewardRedemptionsPage').then((module) => ({ default: module.RewardRedemptionsPage })));
+const MarketingLandingPage = lazy(() => import('./components/MarketingLandingPage'));
 
 const RouteLoader: React.FC = () => (
   <div className="flex min-h-[40vh] w-full items-center justify-center">
@@ -140,11 +141,17 @@ const getSeoForPathname = (pathname: string): SeoConfig => {
   const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
   const canonical = `${SITE_ORIGIN}${normalizedPath}`;
   const defaultSeo: SeoConfig = {
-    title: 'Stampfy | Digital Loyalty Cards',
-    description: DEFAULT_SOCIAL_DESCRIPTION,
-    socialDescription: DEFAULT_SOCIAL_DESCRIPTION,
+    title: normalizedPath === '/'
+      ? 'Stampfy | Cartão fidelidade digital para o seu comércio'
+      : 'Stampfy | Digital Loyalty Cards',
+    description: normalizedPath === '/'
+      ? 'Crie um cartão fidelidade digital para o seu comércio local. Seus clientes acompanham as visitas pelo celular, sem instalar aplicativo.'
+      : DEFAULT_SOCIAL_DESCRIPTION,
+    socialDescription: normalizedPath === '/'
+      ? 'Crie um cartão fidelidade digital para o seu comércio local. Seus clientes acompanham as visitas pelo celular, sem instalar aplicativo.'
+      : DEFAULT_SOCIAL_DESCRIPTION,
     canonical,
-    robots: 'noindex,nofollow',
+    robots: normalizedPath === '/' ? 'index,follow' : 'noindex,nofollow',
     type: 'website',
   };
 
@@ -163,7 +170,7 @@ const SeoManager: React.FC = () => {
     setCanonicalLink(seo.canonical);
     setMetaTag('name', 'description', seo.description);
     setMetaTag('name', 'robots', seo.robots);
-    setMetaTag('property', 'og:locale', 'en_US');
+    setMetaTag('property', 'og:locale', location.pathname === '/' ? 'pt_BR' : 'en_US');
     setMetaTag('property', 'og:type', seo.type ?? 'website');
     setMetaTag('property', 'og:site_name', 'Stampfy');
     setMetaTag('property', 'og:title', seo.title);
@@ -175,7 +182,7 @@ const SeoManager: React.FC = () => {
     setMetaTag('property', 'og:image:type', 'image/jpeg');
     setMetaTag('property', 'og:image:width', '1536');
     setMetaTag('property', 'og:image:height', '1024');
-    setMetaTag('property', 'og:image:alt', 'Stampfy digital loyalty card preview');
+    setMetaTag('property', 'og:image:alt', location.pathname === '/' ? 'Cartão fidelidade digital Stampfy' : 'Stampfy digital loyalty card preview');
     setMetaTag('name', 'twitter:card', 'summary_large_image');
     setMetaTag('name', 'twitter:title', seo.title);
     setMetaTag('name', 'twitter:description', socialDescription);
@@ -626,6 +633,7 @@ const DashboardLayout: React.FC = () => {
 };
 
 const AppRoutes: React.FC = () => {
+  const location = useLocation();
   const { currentOwner, isStaff } = useAuth();
   const [createdCards, setCreatedCards] = useState<Template[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -702,14 +710,14 @@ const AppRoutes: React.FC = () => {
 
   return (
     <SubscriptionProvider value={sub}>
-      {!isSupabaseConfigured && (
+      {!isSupabaseConfigured && location.pathname !== '/' && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {SERVICE_UNAVAILABLE_MESSAGE}
         </div>
       )}
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={withSuspense(<MarketingLandingPage />)} />
         <Route path="/empresa/:slug/*" element={withSuspense(<PublicBusinessSitePage />)} />
         <Route path="/:slug/staff" element={withSuspense(<StaffLoginPage />)} />
         <Route path="/:slug/scan/:uniqueId" element={<StaffScanEntryWrapper />} />
